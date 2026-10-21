@@ -1,0 +1,36 @@
+pipeline {
+    agent any
+
+    options {
+        timestamps()
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install dependencies') {
+            steps {
+                bat 'py -m pip install -r requirements.txt'
+            }
+        }
+
+        stage('Run API Tests') {
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    bat 'py -m behave'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            allure includeProperties: false, jdk: '', results: [[path: 'reports/allure-results']]
+            archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
+        }
+    }
+}

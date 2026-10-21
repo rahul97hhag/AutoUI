@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>API Automation - Execution Report</title>
+<style>
+  body { font-family: Segoe UI, Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 24px; color: #1f2933; }
+  h1 { margin-top: 0; }
+  .summary { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+  .card { background: #fff; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-width: 140px; }
+  .card .value { font-size: 28px; font-weight: 700; }
+  .card .label { color: #6b7280; font-size: 13px; text-transform: uppercase; }
+  .card.passed .value { color: #16a34a; }
+  .card.failed .value { color: #dc2626; }
+  .feature { background: #fff; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .scenario { border-left: 4px solid #d1d5db; padding-left: 12px; margin: 16px 0; }
+  .scenario.passed { border-left-color: #16a34a; }
+  .scenario.failed { border-left-color: #dc2626; }
+  .steps { list-style: none; padding-left: 0; margin: 8px 0 0 0; }
+  .step { padding: 6px 0; border-bottom: 1px solid #f0f0f0; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .step-text { font-family: Consolas, monospace; }
+  .duration { color: #9ca3af; font-size: 12px; margin-left: auto; }
+  .badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; color: #fff; }
+  .badge.passed { background: #16a34a; }
+  .badge.failed { background: #dc2626; }
+  .badge.skipped, .badge.untested { background: #9ca3af; }
+  .error { width: 100%; background: #fef2f2; color: #991b1b; padding: 8px; border-radius: 4px; font-size: 12px; overflow-x: auto; }
+  .timestamp { color: #6b7280; font-size: 13px; margin-bottom: 24px; }
+</style>
+</head>
+<body>
+  <h1>API Automation &mdash; Execution Report</h1>
+  <div class="timestamp">
+    Run started: 2026-10-22 01:24:29 &nbsp;|&nbsp;
+    Duration: 0.44s
+  </div>
+  <div class="summary">
+    <div class="card"><div class="value">1</div><div class="label">Scenarios</div></div>
+    <div class="card passed"><div class="value">1</div><div class="label">Scenarios Passed</div></div>
+    <div class="card failed"><div class="value">0</div><div class="label">Scenarios Failed</div></div>
+    <div class="card"><div class="value">3</div><div class="label">Steps</div></div>
+    <div class="card passed"><div class="value">3</div><div class="label">Steps Passed</div></div>
+    <div class="card failed"><div class="value">0</div><div class="label">Steps Failed</div></div>
+  </div>
+  
+            <div class="feature">
+              <h2>Feature: API Automation</h2>
+              
+                <div class="scenario passed">
+                  <h3>Call an API and print its response
+                    <span class="badge passed">PASSED</span>
+                  </h3>
+                  <ul class="steps">
+                    <li class="step passed">
+                      <span class="badge passed">PASSED</span>
+                      <span class="step-text">Given I want to run &quot;https://jsonplaceholder.typicode.com/posts/1&quot; api</span>
+                      <span class="duration">0.001s</span>
+                      
+                    </li>
+                    <li class="step passed">
+                      <span class="badge passed">PASSED</span>
+                      <span class="step-text">When I run the api</span>
+                      <span class="duration">0.430s</span>
+                      
+                    </li>
+                    <li class="step passed">
+                      <span class="badge passed">PASSED</span>
+                      <span class="step-text">Then I print the response of the &quot;https://jsonplaceholder.typicode.com/posts/1&quot; api</span>
+                      <span class="duration">0.000s</span>
+                      
+                    </li></ul>
+                </div>
+            </div>
+</body>
+</html>
