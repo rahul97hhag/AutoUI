@@ -1,12 +1,23 @@
 import datetime
 import html
+import logging
 import os
+
+import allure
+
+from lib.allure_environment import write_environment_properties
+from lib.logging_config import AllureStreamHandler, setup_logging
 
 REPORT_DIR = "reports"
 REPORT_FILE = os.path.join(REPORT_DIR, "report.html")
+ALLURE_RESULTS_DIR = os.path.join(REPORT_DIR, "allure-results")
+
+logger = logging.getLogger("behave")
 
 
 def before_all(context):
+    setup_logging(log_dir=REPORT_DIR)
+    write_environment_properties(ALLURE_RESULTS_DIR, base_url=os.environ.get("BASE_URL", ""))
     context.report = {
         "started_at": datetime.datetime.now(),
         "features": [],
@@ -26,6 +37,13 @@ def before_scenario(context, scenario):
         "status": "passed",
         "steps": [],
     }
+    context.allure_log_capture = AllureStreamHandler()
+    context.allure_log_capture.start()
+    logger.info("Scenario started: %s", scenario.name)
+
+
+def before_step(context, step):
+    logger.info("---- %s %s ----", step.keyword, step.name)
 
 
 def after_step(context, step):
@@ -40,10 +58,18 @@ def after_step(context, step):
     )
     if step.status.name == "failed":
         context.report_scenario["status"] = "failed"
+        _attach_failure_trace(context, step)
 
 
 def after_scenario(context, scenario):
     context.report_feature["scenarios"].append(context.report_scenario)
+
+    log_text = context.allure_log_capture.stop()
+    allure.attach(
+        log_text,
+        name="scenario.log",
+        attachment_type=allure.attachment_type.TEXT,
+    )
 
 
 def after_feature(context, feature):
@@ -53,6 +79,31 @@ def after_feature(context, feature):
 def after_all(context):
     context.report["finished_at"] = datetime.datetime.now()
     _write_html_report(context.report)
+
+
+def _attach_failure_trace(context, step):
+    """Attach a consolidated failure trace to the current Allure test.
+
+    Runs in `after_step`, which fires after the formatter has already closed
+    the Allure step for this Given/When/Then — so this attaches at the
+    scenario (test) level instead of trying to land inside a step that no
+    longer exists. That's the same place other frameworks attach an
+    on-failure screenshot: immediately visible under the failing test.
+    """
+    trace_lines = [
+        f"Step    : {step.keyword} {step.name}",
+        f"Status  : {step.status.name}",
+        f"Error   : {step.error_message or step.exception}",
+        "",
+        "## Scenario log up to failure",
+        context.allure_log_capture.peek(),
+    ]
+    logger.error("Step failed: %s %s -- %s", step.keyword, step.name, step.error_message or step.exception)
+    allure.attach(
+        "\n".join(trace_lines),
+        name="failure_trace.txt",
+        attachment_type=allure.attachment_type.TEXT,
+    )
 
 
 def _write_html_report(report):

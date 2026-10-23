@@ -1,0 +1,89 @@
+
+Step 1 — Design Overview
+How the pieces fit together
+
+                         ┌─────────────────────┐
+                         │   features/steps/    │
+                         │   *_steps.py          │  ← calls ApiClient + assertions only
+                         └──────────┬────────────┘
+                                    │ uses
+                 ┌──────────────────┼───────────────────┐
+                 ▼                                       ▼
+      ┌────────────────────┐                  ┌──────────────────────┐
+      │  lib/api_client.py   │                  │ lib/allure_assertions │
+      │  ApiClient.request() │                  │ verify_status()       │
+      │  → ApiResponse        │                  │ verify_jsonpath()     │
+      └──────────┬────────────┘                  └───────────┬───────────┘
+                 │ opens nested allure.step(),                │ attaches PASS/FAIL
+                 │ attaches request.json/response.json/        │ markdown table to the
+                 │ api_trace.txt INSIDE that step               │ currently-open step
+                 ▼                                             ▼
+      ┌─────────────────────────────────────────────────────────────┐
+      │        allure_commons step stack (thread-local)              │
+      │  test (scenario) → behave-step (Given/When/Then) → api-step   │
+      └─────────────────────────────────────────────────────────────┘
+                 ▲
+                 │ opened/closed automatically by
+      ┌──────────┴───────────┐
+      │ allure_behave.formatter│  ← already configured in behave.ini
+      │ (wraps each Given/When/│
+      │  Then as an Allure step)│
+      └─────────────────────────┘
+
+      ┌─────────────────────┐
+      │  features/environment.py │  ← logging setup, failure-trace capture,
+      │  (behave hooks)           │     environment.properties, existing custom
+      └─────────────────────┘     HTML report generation (kept, merged in)
+The key mechanic: allure-behave's AllureFormatter already wraps every Given/When/Then step in its own Allure step context before your step function runs, and closes it right after (confirmed by reading the installed allure_behave/listener.py — match_step opens the step, stop_behave_step closes it). allure.step and allure.attach are stack-based under the hood, so anything ApiClient does while your step function is still running — including opening its own nested allure.step("POST /users") — automatically lands as a child of the current Given/When/Then node. You get correct nesting for free, with zero Allure-specific code in step files.
+
+Why a nested allure.step inside ApiClient, not just attaches directly on the behave step
+A single When step might call two endpoints (e.g. "login then fetch profile"). Grouping each call under its own METHOD /path sub-step keeps the tree readable:
+
+
+✔ When I log in and fetch my profile
+    ✔ POST /login
+        📎 request.json  📎 response.json  📎 api_trace.txt
+    ✔ GET /profile
+        📎 request.json  📎 response.json  📎 api_trace.txt
+    ✔ Verify status 200          (from allure_assertions)
+    ✔ Verify $.user.id == 42
+The pitfall I'm designing around now (flagged per your Step 7 ask, but it affects Step 4's design, so calling it out here)
+Behave's hook order per step is:
+before_step → (formatter opens Allure step) → run step function → (formatter closes Allure step) → after_step.
+
+Both before_step and after_step run outside the Allure step's open/close window. So anything attached in after_step — e.g. an on-failure trace — cannot land inside that now-closed step. My design doesn't fight this: after_step deliberately attaches the "failure trace" at the test (scenario) level, which is exactly how Allure's own "on-failure screenshot" convention works in other frameworks (e.g. Selenium) — visible immediately under the test, not buried in a step that's already gone. Trying to force it into the dead step would be the over-engineered, fragile path.
+
+File layout (new additions in bold)
+
+Automation_API/
+├── behave.ini
+├── requirements.txt                  (+ jsonpath-ng, jsonschema)
+├── Jenkinsfile
+├── lib/                               **NEW — plain Python, not behave-specific**
+│   ├── __init__.py
+│   ├── api_client.py                  ApiClient, ApiResponse
+│   ├── allure_assertions.py           verify_status, verify_jsonpath, verify_schema
+│   └── logging_config.py              setup_logging(), per-call log capture
+├── features/
+│   ├── environment.py                 (existing hooks EXTENDED, not replaced)
+│   ├── api.feature                    (unchanged, still your original 3-step demo)
+│   ├── login.feature                  **NEW — Step 5's richer example**
+│   └── steps/
+│       ├── api_steps.py               (unchanged)
+│       └── login_steps.py             **NEW**
+└── reports/
+    ├── report.html                    (existing custom summary — kept)
+    ├── allure-results/
+    └── allure-report/
+lib/ sits as a sibling of features/, not inside it — behave auto-adds the project root to sys.path, so lib/ is just a normal importable package (import lib.api_client). Nothing inside lib/ is a step file, so behave's step-loader never touches it.
+
+Package choices
+allure-behave (already installed) — correct choice, provides the allure module (allure.step, allure.attach, allure.dynamic) via its allure-python-commons dependency. No separate allure package install needed.
+jsonpath-ng (new) — for verify_jsonpath; lightweight, no compiled extensions, works well on Windows without build tools.
+jsonschema (new, optional) — only used if a step passes a schema dict/file to verify_schema; kept optional so simple scenarios don't need it.
+Conflicts in your current setup — called out
+features/environment.py already defines hooks (before_all, before_feature, before_scenario, after_step, after_scenario, after_feature, after_all) for the custom HTML report. Behave allows only one definition per hook name per file, so Step 4 extends these same functions (adds logging setup + failure-trace capture alongside the existing report-collection code) rather than overwriting the file.
+behave.ini currently sets format = allure_behave.formatter:AllureFormatter with no pretty entry (relying on behave's automatic stdout fallback) — this stays as-is, no change needed.
+features/steps/api_steps.py calls requests.get directly — it will keep working untouched; it just won't get the rich Allure evidence until migrated to ApiClient (your call whether to migrate it later; Step 5 only touches the new login.feature).
+✅ Step 1 complete. Say continue for Step 2.
+
