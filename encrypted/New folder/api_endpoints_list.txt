@@ -1,0 +1,81 @@
+get melist of endpoints, give me some notes for that, I do not need swagger here, just name, endpoint, request body, response thats enough.
+11:36 PM
+Here are the four endpoints currently in the codebase:
+
+1. Health Check
+Endpoint: GET /api/health
+Request body: none
+Response (200):
+
+{ "status": "ok" }
+2. List All Recharge Plans
+Endpoint: GET /api/plans
+Request body: none
+Response (200): array of plan summaries (benefits shown as names only)
+
+[
+  {
+    "id": 1,
+    "name": "30GB + Top OTTs",
+    "plan_type": "Prepaid",
+    "mobile_number": null,
+    "amount": 200,
+    "currency": "INR",
+    "amount_payable": 200,
+    "amount_payable_currency": "INR",
+    "pack_type": "Box Office Pack",
+    "data": "30 GB",
+    "talktime": null,
+    "duration": "28 days",
+    "benefit_names": ["Prime Video Mobile Edition", "JioHotstar Mobile for 28 days", "..."]
+  }
+]
+3. Get a Recharge Plan (with full benefit details)
+Endpoint: GET /api/plans/<plan_id>
+Request body: none
+Response (200): single plan, benefits as full nested objects
+
+{
+  "id": 1,
+  "name": "30GB + Top OTTs",
+  "plan_type": "Prepaid",
+  "mobile_number": null,
+  "amount": 200,
+  "currency": "INR",
+  "amount_payable": 200,
+  "amount_payable_currency": "INR",
+  "pack_type": "Box Office Pack",
+  "data": "30 GB",
+  "talktime": null,
+  "duration": "28 days",
+  "benefits": [
+    { "id": 1, "name": "Prime Video Mobile Edition", "validity": "28 days", "description": "Stream in SD quality with ads on 1 device" }
+  ]
+}
+Response (404) if plan doesn't exist:
+
+{ "error": "not_found", "message": "Plan not found" }
+4. Get Review Notes for a Benefit
+Endpoint: GET /api/benefits/<benefit_id>/review-notes
+Request body: none
+Response (200): array of review notes whose benefitName text matches that benefit's name
+
+[
+  {
+    "id": 2,
+    "plan_amount": 609,
+    "plan_name": null,
+    "data": "60 GB",
+    "duration": "1 month",
+    "benefit_name": "Adobe Express Premium",
+    "note": "Source lists benefit \"Adobe Express Premium\" which also appears..."
+  }
+]
+Response (404) if the benefit id doesn't exist:
+
+{ "error": "not_found", "message": "Benefit not found" }
+Notes
+benefit_id in endpoint 4 is the Benefit.id from endpoint 3's benefits[].id — not a benefit name string, since names aren't unique and contain special characters.
+plan_id is the only reliable identifier for a plan — name is frequently null or duplicated across plans in the source data.
+All error responses share a global shape (error, message) for 400/404/405/500 — see app/errors.py.
+GET only for now — no create/update/delete exists yet for plans/benefits/review-notes; the data is seeded from the JSON files via flask seed-db (scripts/seed_data.py), not written through the API.

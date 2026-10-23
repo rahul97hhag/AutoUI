@@ -1,0 +1,702 @@
+[
+  {
+    "name": "30GB + Top OTTs",
+    "amount": 200,
+    "currency": "INR",
+    "planDetails": {
+      "data": "30 GB",
+      "talktime": null,
+      "duration": "28 days"
+    },
+    "benefits": ["Prime Video Mobile Edition"],
+    "category": "Box Office Pack"
+  },
+  {
+    "name": "Netflix + 20 OTTs",
+    "amount": 279,
+    "currency": "INR",
+    "planDetails": {
+      "data": "30 GB",
+      "talktime": null,
+      "duration": "1 month"
+    },
+    "benefits": ["Netflix Basic"],
+    "category": "Housefull Pack"
+  },
+  {
+    "name": "Aha Premium + 18 OTTs on Airtel Xstream Play",
+    "amount": 100,
+    "currency": "INR",
+    "planDetails": {
+      "data": "6 GB",
+      "talktime": null,
+      "duration": "30 days"
+    },
+    "benefits": ["Aha Premium", "18 OTTs on Airtel Xstream Play"],
+    "category": "Blockbuster Pack"
+  },
+  {
+    "name": "9GB data",
+    "amount": 39,
+    "currency": "INR",
+    "planDetails": {
+      "data": "3 GB per day",
+      "talktime": null,
+      "duration": "3 days",
+      "totalData": "9 GB"
+    },
+    "benefits": [],
+    "category": "Value pack"
+  },
+  {
+    "name": "Unlimited data",
+    "amount": 49,
+    "currency": "INR",
+    "planDetails": {
+      "data": "Unlimited",
+      "talktime": null,
+      "duration": "1 day"
+    },
+    "benefits": [],
+    "category": null
+  },
+  {
+    "name": "Value pack",
+    "amount": 22,
+    "currency": "INR",
+    "planDetails": {
+      "data": "1 GB",
+      "talktime": null,
+      "duration": "1 day"
+    },
+    "benefits": [],
+    "category": null
+  },
+  {
+    "name": "Unlimited 5G",
+    "amount": 349,
+    "currency": "INR",
+    "planDetails": {
+      "data": "2 GB per day",
+      "talktime": "Unlimited calls",
+      "duration": "28 days"
+    },
+    "benefits": ["Unlimited 5G Data"],
+    "category": null
+  },
+  {
+    "name": null,
+    "amount": 99,
+    "currency": "INR",
+    "planDetails": {
+      "data": "Unlimited",
+      "talktime": null,
+      "duration": "2 days"
+    },
+    "benefits": [],
+    "category": null
+  },
+  {
+    "name": "Blockbuster Pack",
+    "amount": 361,
+    "currency": "INR",
+    "planDetails": {
+      "data": "50 GB",
+      "talktime": null,
+      "duration": "30 days"
+    },
+    "benefits": [],
+    "category": null
+  },
+  {
+    "name": "NRI Pack for India + Abroad",
+    "amount": 4999,
+    "currency": "INR",
+    "planDetails": {
+      "data": "7 GB",
+      "talktime": null,
+      "duration": "365 days"
+    },
+    "benefits": ["Roam in 189+ countries at no extra cost"],
+    "category": null
+  },
+  {
+    "name": "2.5GB/day in India",
+    "amount": 1298,
+    "currency": "INR",
+    "planDetails": {
+      "data": "6 GB",
+      "talktime": null,
+      "duration": "10 days"
+    },
+    "benefits": [
+      "Great for short trips abroad",
+      "6 GB, 200 mins incoming and outgoing (India + local), 20 SMS"
+    ],
+    "category": "Free Incoming SMS"
+  },
+  {
+    "name": null,
+    "amount": 998,
+    "currency": "INR",
+    "planDetails": {
+      "data": "4 GB",
+      "talktime": null,
+      "duration": "5 days"
+    },
+    "benefits": [
+      "Great for short trips abroad",
+      "150 mins incoming and outgoing (India + local), 20 SMS"
+    ],
+    "category": "Free Incoming SMS"
+  },
+  {
+    "name": null,
+    "amount": 2998,
+    "currency": "INR",
+    "planDetails": {
+      "data": "10 GB",
+      "talktime": null,
+      "duration": "30 days"
+    },
+    "benefits": [
+      "Great for long trips abroad",
+      "300 mins incoming and outgoing (India + local), 20 SMS"
+    ],
+    "category": "Free Incoming SMS"
+  },
+  {
+    "name": "International Roaming",
+    "amount": 698,
+    "currency": "INR",
+    "planDetails": {
+      "data": "1 GB",
+      "talktime": null,
+      "duration": "1 day"
+    },
+    "benefits": ["100 mins incoming and outgoing, 10 SMS"],
+    "category": "Works in-flight"
+  },
+  {
+    "name": "International Roaming",
+    "amount": 118,
+    "currency": "INR",
+    "planDetails": {
+      "data": null,
+      "talktime": "Standard charges apply",
+      "duration": "28 days"
+    },
+    "benefits": ["Service activation", "Free incoming SMS"],
+    "category": null
+  },
+  {
+    "name": "International Roaming",
+    "amount": 699,
+    "currency": "INR",
+    "planDetails": {
+      "data": "2 GB",
+      "talktime": null,
+      "duration": null
+    },
+    "benefits": ["Available in USA, Europe, Gulf, Asia, Africa and more"],
+    "category": null
+  },
+  {
+    "name": "Unlimited 5G",
+    "amount": 399,
+    "currency": "INR",
+    "planDetails": {
+      "data": "2.5 GB per day",
+      "talktime": "Unlimited calls",
+      "duration": "28 days"
+    },
+    "benefits": ["Unlimited 5G Data"],
+    "category": null
+  },
+  {
+    "name": "Unlimited 5G",
+    "amount": 379,
+    "currency": "INR",
+    "planDetails": {
+      "data": "2 GB per day",
+      "talktime": "Unlimited calls",
+      "duration": "1 month"
+    },
+    "benefits": ["Google One"],
+    "category": "1 Month"
+  },
+  {
+    "name": null,
+    "amount": 449,
+    "currency": "INR",
+    "planDetails": {
+      "data": "4 GB per day",
+      "talktime": "Unlimited calls",
+      "duration": "28 days"
+    },
+    "benefits": ["Unlimited 5G Data"],
+    "category": null
+  },
+  {
+    "name": "Maxx data - 4GB/day",
+    "amount": 429,
+    "currency": "INR",
+    "planDetails": {
+      "data": "2.5 GB per day",
+      "talktime": "Unlimited calls",
+      "duration": "1 month"
+    },
+    "benefits": ["Unlimited 5G Data"],
+    "category": "Unlimited 5G + 2.5GB/day"
+  },
+  {
+    "name": "Netflix + 20 OTTs",
+    "amount": 598,
+    "currency": "INR",
+    "planDetails": {
+      "data": "2 GB per day",
+      "talktime": "Unlimited calls",
+      "duration": "28 days"
+    },
+    "benefits": ["Netflix Basic"],
+    "category": null
+  },
+  {
+    "name": "With Prime Video",
+    "amount": 838,
+    "currency": "INR",
+    "planDetails": {
+      "data": "3 GB per day",
+      "talktime": "Unlimited calls",
+      "duration": "56 days"
+    },
+    "benefits": ["Amazon Prime Lite"],
+    "category": null
+  },
+  {
+    "name": null,
+    "amount": 979,
+    "currency": "INR",
+    "planDetails": {
+      "data": "2 GB per day",
+      "talktime": "Unlimited calls",
+      "duration": "84 days"
+    },
+    "benefits": ["Unlimited 5G Data"],
+    "category": null
+  },
+  {
+    "name": "Unlimited 5G",
+    "amount": 3599,
+    "currency": "INR",
+    "planDetails": {
+      "data": "2 GB per day",
+      "talktime": "Unlimited calls",
+      "duration": "365 days"
+    },
+    "benefits": ["Unlimited 5G Data"],
+    "category": null
+  },
+  {
+    "name": "Unlimited 5G",
+    "amount": 1199,
+    "currency": "INR",
+    "planDetails": {
+      "data": "2.5 GB per day",
+      "talktime": "Unlimited calls",
+      "duration": "84 days"
+    },
+    "benefits": ["Amazon Prime Lite"],
+    "category": null
+  },
+  {
+    "name": "Netflix + 20 OTTs",
+    "amount": 1729,
+    "currency": "INR",
+    "planDetails": {
+      "data": "2 GB per day",
+      "talktime": "Unlimited calls",
+      "duration": "84 days"
+    },
+    "benefits": ["Netflix Basic"],
+    "category": null
+  },
+  {
+    "name": "Unlimited 5G",
+    "amount": 1798,
+    "currency": "INR",
+    "planDetails": {
+      "data": "3 GB per day",
+      "talktime": "Unlimited calls",
+      "duration": "84 days"
+    },
+    "benefits": ["Netflix Basic"],
+    "category": null
+  },
+  {
+    "name": "150 GB Bulk Data",
+    "amount": 3999,
+    "currency": "INR",
+    "planDetails": {
+      "data": "2.5 GB per day",
+      "talktime": "Unlimited calls",
+      "duration": "365 days"
+    },
+    "benefits": ["Unlimited 5G Data"],
+    "category": null
+  },
+  {
+    "name": "Talktime",
+    "amount": 5000,
+    "currency": "INR",
+    "planDetails": {
+      "data": null,
+      "talktime": "₹4237.29",
+      "duration": null
+    },
+    "benefits": [],
+    "category": null
+  },
+  {
+    "name": "Talktime",
+    "amount": 1000,
+    "currency": "INR",
+    "planDetails": {
+      "data": null,
+      "talktime": "₹847.46",
+      "duration": null
+    },
+    "benefits": [],
+    "category": null
+  },
+  {
+    "name": "Talktime",
+    "amount": 500,
+    "currency": "INR",
+    "planDetails": {
+      "data": null,
+      "talktime": "₹423.73",
+      "duration": null
+    },
+    "benefits": [],
+    "category": null
+  },
+  {
+    "name": "Talktime",
+    "amount": 120,
+    "currency": "INR",
+    "planDetails": {
+      "data": null,
+      "talktime": "₹98.69",
+      "duration": null
+    },
+    "benefits": [],
+    "category": null
+  },
+  {
+    "name": "Talktime",
+    "amount": 10,
+    "currency": "INR",
+    "planDetails": {
+      "data": null,
+      "talktime": "₹7.47",
+      "duration": null
+    },
+    "benefits": [],
+    "category": null
+  },
+  {
+    "name": "ISD calling",
+    "amount": 18,
+    "currency": "INR",
+    "planDetails": {
+      "data": null,
+      "talktime": null,
+      "duration": "28 days"
+    },
+    "benefits": ["Discounted ISD calling"],
+    "category": null
+  },
+  {
+    "name": "In-flight roaming",
+    "amount": 295,
+    "currency": "INR",
+    "planDetails": {
+      "data": "500 MB",
+      "talktime": "100 outgoing minutes; no incoming calls",
+      "duration": "1 day"
+    },
+    "benefits": ["100 SMS on selected international flights"],
+    "category": null
+  },
+  {
+    "name": "In-flight roaming",
+    "amount": 595,
+    "currency": "INR",
+    "planDetails": {
+      "data": "1 GB",
+      "talktime": "100 outgoing minutes; no incoming calls",
+      "duration": "1 day"
+    },
+    "benefits": ["100 SMS on selected international flights"],
+    "category": null
+  },
+  {
+    "name": "In-flight roaming",
+    "amount": 196,
+    "currency": "INR",
+    "planDetails": {
+      "data": "250 MB",
+      "talktime": "100 outgoing minutes; no incoming calls",
+      "duration": "1 day"
+    },
+    "benefits": ["100 SMS on selected international flights"],
+    "category": null
+  },
+  {
+    "name": "Extra 1GB on Airtel App",
+    "amount": 77,
+    "currency": "INR",
+    "planDetails": {
+      "data": "5 GB",
+      "talktime": null,
+      "duration": "7 days"
+    },
+    "benefits": [],
+    "category": null
+  },
+  {
+    "name": null,
+    "amount": 609,
+    "currency": "INR",
+    "planDetails": {
+      "data": "60 GB",
+      "talktime": "Unlimited calls",
+      "duration": "1 month"
+    },
+    "benefits": ["Adobe Express Premium"],
+    "category": null
+  },
+  {
+    "name": null,
+    "amount": 589,
+    "currency": "INR",
+    "planDetails": {
+      "data": "50 GB",
+      "talktime": "Unlimited calls",
+      "duration": "30 days"
+    },
+    "benefits": ["Adobe Express Premium"],
+    "category": null
+  },
+  {
+    "name": null,
+    "amount": 355,
+    "currency": "INR",
+    "planDetails": {
+      "data": "25 GB",
+      "talktime": "Unlimited calls",
+      "duration": "30 days"
+    },
+    "benefits": ["Adobe Express Premium"],
+    "category": null
+  },
+  {
+    "name": null,
+    "amount": 199,
+    "currency": "INR",
+    "planDetails": {
+      "data": "2 GB",
+      "talktime": "Unlimited calls",
+      "duration": "28 days"
+    },
+    "benefits": ["Adobe Express Premium"],
+    "category": null
+  },
+  {
+    "name": null,
+    "amount": 219,
+    "currency": "INR",
+    "planDetails": {
+      "data": "3 GB",
+      "talktime": "Unlimited calls",
+      "duration": "28 days"
+    },
+    "benefits": ["Adobe Express Premium"],
+    "category": null
+  },
+  {
+    "name": null,
+    "amount": 2249,
+    "currency": "INR",
+    "planDetails": {
+      "data": "30 GB",
+      "talktime": "Unlimited calls",
+      "duration": "365 days"
+    },
+    "benefits": ["Adobe Express Premium"],
+    "category": null
+  },
+  {
+    "name": null,
+    "amount": 1849,
+    "currency": "INR",
+    "planDetails": {
+      "data": null,
+      "talktime": "Unlimited calls",
+      "duration": "365 days",
+      "sms": 3600
+    },
+    "benefits": ["Adobe Express Premium"],
+    "category": null
+  },
+  {
+    "name": "Unlimited 5G + 3 GB/ Day",
+    "amount": 1099,
+    "currency": "INR",
+    "planDetails": {
+      "data": "3 GB per day",
+      "talktime": "Unlimited calls",
+      "duration": "84 days"
+    },
+    "benefits": ["Unlimited 5G Data"],
+    "category": null
+  },
+  {
+    "name": null,
+    "amount": 899,
+    "currency": "INR",
+    "planDetails": {
+      "data": "1.5 GB per day",
+      "talktime": "Unlimited calls",
+      "duration": "84 days"
+    },
+    "benefits": ["Unlimited 5G Data"],
+    "category": null
+  },
+  {
+    "name": null,
+    "amount": 548,
+    "currency": "INR",
+    "planDetails": {
+      "data": "7 GB",
+      "talktime": "Unlimited calls",
+      "duration": "84 days"
+    },
+    "benefits": ["Adobe Express Premium"],
+    "category": null
+  },
+  {
+    "name": null,
+    "amount": 489,
+    "currency": "INR",
+    "planDetails": {
+      "data": "6 GB",
+      "talktime": "Unlimited calls",
+      "duration": "77 days"
+    },
+    "benefits": ["Adobe Express Premium"],
+    "category": null
+  },
+  {
+    "name": null,
+    "amount": 469,
+    "currency": "INR",
+    "planDetails": {
+      "data": null,
+      "talktime": "Unlimited calls",
+      "duration": "84 days",
+      "sms": 900
+    },
+    "benefits": ["Adobe Express Premium"],
+    "category": null
+  },
+  {
+    "name": null,
+    "amount": 348,
+    "currency": "INR",
+    "planDetails": {
+      "data": "2 GB per day",
+      "talktime": "Unlimited calls",
+      "duration": "28 days"
+    },
+    "benefits": ["Adobe Express Premium"],
+    "category": null
+  },
+  {
+    "name": null,
+    "amount": 206,
+    "currency": "INR",
+    "planDetails": {
+      "data": null,
+      "talktime": "Unlimited calls",
+      "duration": "1 month",
+      "sms": 300
+    },
+    "benefits": ["Free hello tunes"],
+    "category": null
+  },
+  {
+    "name": null,
+    "amount": 203,
+    "currency": "INR",
+    "planDetails": {
+      "data": null,
+      "talktime": "Unlimited calls",
+      "duration": "30 days",
+      "sms": 300
+    },
+    "benefits": ["Free hello tunes"],
+    "category": null
+  },
+  {
+    "name": null,
+    "amount": 185,
+    "currency": "INR",
+    "planDetails": {
+      "data": null,
+      "talktime": "Unlimited calls",
+      "duration": "28 days",
+      "sms": 300
+    },
+    "benefits": ["Free hello tunes"],
+    "category": null
+  },
+  {
+    "name": "Value pack",
+    "amount": 33,
+    "currency": "INR",
+    "planDetails": {
+      "data": "2 GB",
+      "talktime": null,
+      "duration": "1 day"
+    },
+    "benefits": [],
+    "category": null
+  },
+  {
+    "name": null,
+    "amount": 161,
+    "currency": "INR",
+    "planDetails": {
+      "data": "12 GB",
+      "talktime": null,
+      "duration": "30 days"
+    },
+    "benefits": [],
+    "category": "Blockbuster Pack"
+  },
+  {
+    "name": null,
+    "amount": 26,
+    "currency": "INR",
+    "planDetails": {
+      "data": "1.5 GB",
+      "talktime": null,
+      "duration": "1 day"
+    },
+    "benefits": [],
+    "category": null
+  }
+]
+

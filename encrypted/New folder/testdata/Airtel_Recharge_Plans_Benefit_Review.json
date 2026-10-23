@@ -1,0 +1,100 @@
+{
+  "reviewNotes": [
+    {
+      "planAmount": 100,
+      "planName": "Aha Premium + 18 OTTs on Airtel Xstream Play",
+      "data": "6 GB",
+      "duration": "30 days",
+      "benefitName": "\"Aha Premium\" / \"18 OTTs on Airtel Xstream Play\"",
+      "note": "A reference example describes a combined benefit named \"Aha Premium + 18 OTTs on Airtel Xstream Play\" with a description and 28-day validity, but this source plan lists the two components as separate benefit strings and has a different duration (30 days). Left as name-only null fields; not merged or enriched to avoid inventing entitlement details."
+    },
+    {
+      "planAmount": 609,
+      "planName": null,
+      "data": "60 GB",
+      "duration": "1 month",
+      "benefitName": "Adobe Express Premium",
+      "note": "Source lists benefit \"Adobe Express Premium\" which also appears in a reference example tied to a different plan duration/identity. Validity and description were NOT copied from the example because the entitlement period could not be confirmed for this plan; left as null pending verification."
+    },
+    {
+      "planAmount": 589,
+      "planName": null,
+      "data": "50 GB",
+      "duration": "30 days",
+      "benefitName": "Adobe Express Premium",
+      "note": "Source lists benefit \"Adobe Express Premium\" which also appears in a reference example tied to a different plan duration/identity. Validity and description were NOT copied from the example because the entitlement period could not be confirmed for this plan; left as null pending verification."
+    },
+    {
+      "planAmount": 355,
+      "planName": null,
+      "data": "25 GB",
+      "duration": "30 days",
+      "benefitName": "Adobe Express Premium",
+      "note": "Source lists benefit \"Adobe Express Premium\" which also appears in a reference example tied to a different plan duration/identity. Validity and description were NOT copied from the example because the entitlement period could not be confirmed for this plan; left as null pending verification."
+    },
+    {
+      "planAmount": 199,
+      "planName": null,
+      "data": "2 GB",
+      "duration": "28 days",
+      "benefitName": "Adobe Express Premium",
+      "note": "Source lists benefit \"Adobe Express Premium\" which also appears in a reference example tied to a different plan duration/identity. Validity and description were NOT copied from the example because the entitlement period could not be confirmed for this plan; left as null pending verification."
+    },
+    {
+      "planAmount": 219,
+      "planName": null,
+      "data": "3 GB",
+      "duration": "28 days",
+      "benefitName": "Adobe Express Premium",
+      "note": "Source lists benefit \"Adobe Express Premium\" which also appears in a reference example tied to a different plan duration/identity. Validity and description were NOT copied from the example because the entitlement period could not be confirmed for this plan; left as null pending verification."
+    },
+    {
+      "planAmount": 2249,
+      "planName": null,
+      "data": "30 GB",
+      "duration": "365 days",
+      "benefitName": "Adobe Express Premium",
+      "note": "Source lists benefit \"Adobe Express Premium\" which also appears in a reference example tied to a different plan duration/identity. Validity and description were NOT copied from the example because the entitlement period could not be confirmed for this plan; left as null pending verification."
+    },
+    {
+      "planAmount": 1849,
+      "planName": null,
+      "data": null,
+      "duration": "365 days",
+      "benefitName": "Adobe Express Premium",
+      "note": "Source lists benefit \"Adobe Express Premium\" which also appears in a reference example tied to a different plan duration/identity. Validity and description were NOT copied from the example because the entitlement period could not be confirmed for this plan; left as null pending verification."
+    },
+    {
+      "planAmount": 548,
+      "planName": null,
+      "data": "7 GB",
+      "duration": "84 days",
+      "benefitName": "Adobe Express Premium",
+      "note": "Source lists benefit \"Adobe Express Premium\" which also appears in a reference example tied to a different plan duration/identity. Validity and description were NOT copied from the example because the entitlement period could not be confirmed for this plan; left as null pending verification."
+    },
+    {
+      "planAmount": 489,
+      "planName": null,
+      "data": "6 GB",
+      "duration": "77 days",
+      "benefitName": "Adobe Express Premium",
+      "note": "Source lists benefit \"Adobe Express Premium\" which also appears in a reference example tied to a different plan duration/identity. Validity and description were NOT copied from the example because the entitlement period could not be confirmed for this plan; left as null pending verification."
+    },
+    {
+      "planAmount": 469,
+      "planName": null,
+      "data": null,
+      "duration": "84 days",
+      "benefitName": "Adobe Express Premium",
+      "note": "Source lists benefit \"Adobe Express Premium\" which also appears in a reference example tied to a different plan duration/identity. Validity and description were NOT copied from the example because the entitlement period could not be confirmed for this plan; left as null pending verification."
+    },
+    {
+      "planAmount": 348,
+      "planName": null,
+      "data": "2 GB per day",
+      "duration": "28 days",
+      "benefitName": "Adobe Express Premium",
+      "note": "Source lists benefit \"Adobe Express Premium\" which also appears in a reference example tied to a different plan duration/identity. Validity and description were NOT copied from the example because the entitlement period could not be confirmed for this plan; left as null pending verification."
+    }
+  ]
+}
