@@ -1,0 +1,90 @@
+<header class="site-header">
+  <div class="top-nav">
+    <span>INDIVIDUAL</span>
+    <span>BUSINESS</span>
+    <span>INVESTOR</span>
+  </div>
+
+  <nav class="main-nav">
+    <div class="brand">airtel</div>
+    <div class="nav-links">
+      <span>Wi-Fi</span>
+      <span>Postpaid</span>
+      <span>Prepaid</span>
+      <span>DTH</span>
+      <span>Airtel Black</span>
+      <span>Bank</span>
+      <span>Finance</span>
+      <span>Coverage Map</span>
+      <span>Service Quality</span>
+      <span>Account</span>
+    </div>
+  </nav>
+</header>
+
+<main class="page-layout">
+  <aside class="sidebar">
+    <section class="number-card">
+      <span class="phone-number">{{ mobileNumber }}</span>
+      <button type="button" (click)="changeNumber()">CHANGE</button>
+    </section>
+
+    <section class="search-card">
+      <h2>FIND A PREFERRED RECHARGE PACK</h2>
+
+      <div class="search-row">
+        <input type="search" placeholder="Search for a pack or add-ons" />
+        <button type="button" class="filter-button">Filter</button>
+      </div>
+    </section>
+  </aside>
+
+  <section class="packs-content">
+    <div class="breadcrumb">
+      <span>‹</span>
+      <a href="#">Recharge</a>
+      <span>›</span>
+      <a href="#">Prepaid</a>
+      <span>›</span>
+      <span>All packs</span>
+    </div>
+
+    <h1>Recharge Packs</h1>
+
+    <nav class="pack-tabs">
+      <button class="active" type="button">Content Packs</button>
+      <button type="button">Recommended Packs</button>
+      <button type="button">Top Data Packs</button>
+      <button type="button">International Roaming</button>
+      <button type="button">Others</button>
+    </nav>
+
+    <p class="pack-status" *ngIf="loading">Loading recharge packs…</p>
+    <p class="pack-status" *ngIf="error">{{ error }}</p>
+
+    <div class="pack-list" *ngIf="!loading && !error">
+      <article class="pack-card" *ngFor="let pack of packs">
+        <span class="pack-tag">{{ pack.name }}</span>
+
+        <div class="pack-summary">
+          <strong>{{ priceLabel(pack.amount_payable, pack.amount_payable_currency) }}</strong>
+          <span><strong>{{ pack.data }}</strong> data</span>
+          <span><strong>{{ pack.duration }}</strong> validity</span>
+          <span class="arrow">›</span>
+        </div>
+
+        <div class="pack-details">
+          <span>
+            {{ pack.benefit_names[0] }}
+            <ng-container *ngIf="pack.benefit_names.length > 1">+{{ pack.benefit_names.length - 1 }} more</ng-container>
+          </span>
+          <a href="#" (click)="viewDetails(pack, $event)">VIEW DETAILS</a>
+        </div>
+
+        <div class="pack-footer">
+          {{ pack.pack_type }}
+        </div>
+      </article>
+    </div>
+  </section>
+</main>

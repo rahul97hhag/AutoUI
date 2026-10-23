@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+reports/
+.env
+*.egg-info/
+.claude/
+file_vault.py
+Git_Repo_Notes.txt
+Run_Commands.txt
+test_cases.txt

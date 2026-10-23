@@ -1,0 +1,186 @@
+Yes—this is a good subject for a 20-minute tutorial. Automation Exercise describes itself as a practice site and publishes 26 UI test cases. Trying to automate all of them in one video would be too much; focus on a small, complete user journey and show how you structure it with Python, Playwright, and Behave. Automation Exercise, published test cases
+Suggested video: “Automate an E-commerce User Journey with Behave and Playwright”
+Use this flow:
+1. Open the site and check that the home page loads.
+2. Open Products and search for an item.
+3. Add a product to the cart.
+4. Check the product, quantity, and price in the cart.
+5. Show one failure case, such as an invalid login.
+These steps draw on the site’s published product search, cart, and login scenarios. They make a clear demo without spending most of the video setting up a new account or completing checkout.
+20-minute outline
+Time	Segment
+0:00–1:00	Introduce the site, goal, and tools
+1:00–3:00	Walk through the chosen test case on the site
+3:00–5:00	Create the Python project and install dependencies
+5:00–7:00	Explain the feature file and Gherkin scenario
+7:00–13:00	Implement the steps with Playwright
+13:00–16:00	Run the scenario and show the browser
+16:00–18:00	Add assertions and briefly show a failure
+18:00–20:00	Recap, run the suite, and suggest next scenarios
+
+
+20-minute recording plan
+
+Time	What to show
+0:00–1:30	Introduce Automation Exercise and explain that it provides practice test cases.
+1:30–3:00	Open the site’s Test Cases page and choose a few scenarios to demonstrate.
+3:00–4:00	Show your prepared test-run view and explain the scenario names and pass/fail results. No code walkthrough needed.
+4:00–8:00	Run the product search scenario in the browser; show the search result and the passing result.
+8:00–12:00	Run the add-to-cart scenario; show the cart contents and the passing result.
+12:00–15:00	Run an invalid-login scenario; show the site’s error message and how the test confirms it.
+15:00–18:00	Show a concise Behave report or test summary and explain what passed or failed.
+18:00–20:00	Recap the user flows covered and point viewers to the site’s published cases for more practice.
+
+
+
+A simple project layout could be:
+automationexercise-bdd/
+├── features/
+│   ├── environment.py
+│   ├── products.feature
+│   └── steps/
+│       └── products_steps.py
+├── requirements.txt
+└── README.md
+Use Behave for the readable Given / When / Then scenarios, and Playwright for browser actions and assertions. In the video, explain why you chose each locator and assertion as you write it; that helps viewers learn the testing approach, not just copy code.
+For a first video, I’d avoid signup and checkout: those flows have more steps and need unique account data. You can make them follow-up videos.
+
+
+
+
+
+
+
+
+
+Here's the text extracted from the image:
+
+```
+Video review — inspect the recording
+
+Check What to verify
+Duration  At least 15:00, no >45:00m including introduction; one continuous take.
+Opening statement  Contributor identifies the task, intended result and basic
+                    workflow at the start.
+Task alignment  Actual activity matches the approved task and stated objective.
+Complexity  Realistic specialist workflow, not aimless or entry-level clicking.
+Applications  Look for 3+ meaningful apps when scrubbing; deeply technical 1-2-app
+              workflows may qualify.
+              Do not reject solely on count without checking task requirements.
+
+Software restrictions  No currently prohibited software is used;
+                        escalate conflicts between examples and restriction list.
+Window visibility  Relevant UI remains readable; windows sized sensibly,
+                    without obstructive overlap or excessive empty desktop.
+Narration language  Understandable spoken English throughout; accents, grammatical
+                     mistakes and imperfect fluency are acceptable.
+Three W's  Captures WHAT is being done, WHERE (specific app/UI control),
+           and WHY it is necessary, repeatedly throughout the workflow.
+Action narration  Before / during / after meaningful actions:
+                   identifies controls, narrates action, confirms result.
+Cursor and pacing  Purposeful, natural cursor movement, appropriate emphasis,
+                    measured clicks and sequential actions.
+Judgment  Explains findings, choices and domain-specific reasoning rather
+          than simply reading the screen.
+Privacy and conduct  No PII, personal accounts, sensitive unauthorized material
+                      or AI tool use in execution.
+Resolution  A usable result or defensible resolution is reached and shown.
+Verification  Outcome is explicitly checked against objective/acceptance criteria.
+Closing  Contributor summarizes the result and clearly ends the task.
+```
+
+
+
+Now based on this guidelines -- suggest me what to record from this project minute by minute and make it
+ 20 mins video, and also provide me the speech to explain and talk for that duration.
+
+Setting up the collaborative doc hit friction, so I'll give you the full script directly 
+here instead — it's ready to use either way.
+
+The task to film
+Test Case 24 — "Download Invoice after purchase order" from test_cases.txt. 
+This project auto-generates Gherkin from the 26 published test cases using a trained retrieval 
+model (tools/generate_features_from_test_cases.py + step_model.pkl), but the model can only emit 
+steps that already exist in config/locators.yaml / generic_steps.py. 
+I checked: there's no "invoice" or "download" entry anywhere in the registry, so the generated scenario in 
+features/generated_test_cases.feature for TC24 is nonsense — it asserts a contact-us message, 
+clicks a cart-remove button, and never touches a download at all. 
+That's a real, demonstrable gap, not a staged one.
+
+Goal for the recording: diagnose why the generated scenario is wrong, 
+add the missing locator + a Playwright download-handling step to the framework, 
+hand-write a correct scenario in checkout.feature, run it live, and verify it passes.
+
+Acceptance criteria to state up front and check off at the end:
+
+Order placed successfully through the real checkout flow.
+Download Invoice click is verified via Playwright's actual download event, not just a click.
+New scenario runs headed, end-to-end, and passes under behave.
+The broken generated TC24 is explicitly flagged as a pipeline limitation, not left looking like real coverage.
+Before recording
+Set headless: false and slow_mo: 150 in config/config.yaml so the run is watchable.
+Use utils/test_data.py's random generator for the account and the site's own dummy card 4242424242424242 — no real PII.
+Have test_cases.txt, features/generated_test_cases.feature, config/locators.yaml, features/steps/generic_steps.py, 
+features/checkout.feature all in tabs.
+Do one dry run off-camera so you know the real "Download Invoice" 
+selector before you're live (you still discover it on camera — you just won't be flying blind for 20 minutes).
+
+
+Minute-by-minute
+0:00–1:30 — Opening statement. 
+            State the task, the intended result, and the three surfaces you'll work across 
+            (VS Code, terminal, live site). 
+            "I've already confirmed test case 24's auto-generated scenario is wrong, 
+            not flaky — the retrieval model never learned a 'download invoice' step. 
+            My goal is to find out why, register that capability properly in the framework, 
+            and end with a scenario that actually passes."
+
+1:30–3:30 — Orient. Show README.md, behave.ini 
+            (no @wip tags, so everything in features/ is trusted by default), 
+            config/locators.yaml top-of-file comment explaining the registry pattern. 
+            Say what, where, why: "Every scenario in this folder runs by default and counts as coverage — including the broken one I'm about to show you."
+
+3:30–6:00 — Expose the bug. 
+                Side-by-side: the 22 real numbered steps in test_cases.txt for TC24 vs. the generated 
+                Scenario: in generated_test_cases.feature. 
+                Read the mismatches aloud — wrong assertions, wrong clicks, no download step anywhere.
+
+6:00–8:00 — Root-cause it. Open the generator script's docstring (the "IMPORTANT LIMIT" paragraph), 
+            then search locators.yaml and generic_steps.py for "download"/"invoice" — zero hits. 
+            State the judgment call explicitly: "I could patch just this one scenario, 
+                but I'm fixing the actual gap so the next generator run doesn't hit the same wall."
+
+8:00–10:30 — Inspect the live element. 
+                Manually place one order on automationexercise.com with throwaway data, 
+                    reach the confirmation page, open DevTools on the real Download Invoice link, 
+                    click it once by hand, confirm a file lands. 
+                    This is "verify before you guess" — strong judgment material.
+
+10:30–13:00 — Register the capability. 
+                Add one locator entry under payment: in locators.yaml. 
+                Add a new @when step in generic_steps.py wrapping Playwright's expect_download() around the click, 
+                plus a @then step asserting the filename, 
+                matching the file's existing _locate() / decorator style.
+
+13:00–15:30 — Write the scenario. 
+                New Scenario: in checkout.feature reusing the existing Background:, 
+                through to payment, 
+                then the new download step, 
+                then account-deletion cleanup (so you don't orphan test accounts on a public site).
+
+15:30–18:00 — Run it live. ./venv/Scripts/python.exe -m behave features/checkout.feature --name "Download invoice". 
+                Narrate over the headed browser as it runs. If it fails first try — stay on camera, 
+                read the real traceback, check reports/screenshots/, fix, rerun. 
+                That loop is good footage, don't cut around it.
+
+18:00–19:30 — Verify against criteria. Walk the terminal's pass line back against each of 
+                the four acceptance criteria from minute 0, one by one, out loud.
+
+19:30–20:00 — Closing. Show the diff across the three changed files. Summarize: found a real gap, 
+                root-caused it, verified against the live DOM, closed it in the framework, 
+                proved it with a passing run. End the take.
+
+Want me to actually make these three code changes (locator, step, scenario) in the 
+    repo now so you have a real passing run to record against, rather than just the script?
+
+

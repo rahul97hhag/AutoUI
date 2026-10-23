@@ -1,0 +1,135 @@
+// Local Jenkins pipeline — no SCM checkout. Runs directly against the
+// project's existing path on this machine. Paste into a Jenkins
+// "Pipeline script" job (Pipeline definition: Pipeline script, not
+// "Pipeline script from SCM"), or point a Pipeline-from-file job at this
+// file directly.
+
+pipeline {
+    agent any
+
+    environment {
+        PROJECT_DIR = 'C:\\Bhavani\\Applications\\Automation_UI'
+        VENV_SCRIPTS = "${PROJECT_DIR}\\venv\\Scripts"
+        // Playwright needs headless=true on a Jenkins Windows service
+        // (no interactive desktop session to show a browser window in).
+        // config.yaml currently has headless: false; override it here.
+        HEADLESS = 'true'
+        // Makes "config", "utils", etc. importable regardless of cwd.
+        PYTHONPATH = "${PROJECT_DIR}"
+        // Put the venv's python/behave ahead of anything else on PATH.
+        PATH = "${VENV_SCRIPTS};${env.PATH}"
+        // Playwright's default browser cache is per-Windows-profile
+        // (normally %LOCALAPPDATA%\ms-playwright). A Jenkins agent running
+        // as a service account's profile can resolve that differently (or
+        // inconsistently) between the install step and the actual test
+        // run, so the browser "install" appears to succeed but the launch
+        // later can't find it. Pin it to a fixed, project-local folder so
+        // install and launch always agree on where to look, regardless of
+        // which account/profile Jenkins runs under on that machine.
+        PLAYWRIGHT_BROWSERS_PATH = "${PROJECT_DIR}\\.ms-playwright"
+    }
+
+    stages {
+
+        stage('1. Navigate to project folder') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    bat 'cd'
+                }
+            }
+        }
+
+        stage('1b. Bootstrap virtualenv if missing') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    // The agent may only have the project files copied over,
+                    // not a venv set up (no venv\Scripts\python.exe yet, as
+                    // seen in an earlier run: "cannot find the path
+                    // specified" for both python.exe and behave). Create it
+                    // from the system Python if missing, then make sure
+                    // deps are installed, so the pipeline is self-sufficient
+                    // instead of depending on a one-time manual setup step
+                    // on that machine.
+                    bat '''
+                        if not exist "%VENV_SCRIPTS%\\python.exe" (
+                            echo No venv found at %VENV_SCRIPTS% - creating one...
+                            python -m venv venv
+                        )
+                        "%VENV_SCRIPTS%\\python.exe" -m pip install --upgrade pip
+                        "%VENV_SCRIPTS%\\python.exe" -m pip install -r requirements.txt
+                        "%VENV_SCRIPTS%\\python.exe" -m playwright install chromium --with-deps
+                    '''
+                }
+            }
+        }
+
+        stage('2. Set Python path') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    // Call the venv's python.exe by full path rather than
+                    // bare "python" — on a Windows Jenkins agent running as
+                    // a service account, the environment{} block's PATH
+                    // override doesn't always propagate to PATH resolution
+                    // the way it does in an interactive shell, so "where"/
+                    // bare-command lookups can fail even though the file
+                    // genuinely exists.
+                    bat '''
+                        echo PYTHONPATH=%PYTHONPATH%
+                        "%VENV_SCRIPTS%\\python.exe" --version
+                    '''
+                }
+            }
+        }
+
+        stage('3. Set env PATH') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    bat '''
+                        echo PATH=%PATH%
+                        if exist "%VENV_SCRIPTS%\\behave.exe" (echo behave.exe found at %VENV_SCRIPTS%) else (echo WARNING: behave.exe NOT found at %VENV_SCRIPTS%)
+                    '''
+                }
+            }
+        }
+
+        stage('4. Run Behave tests') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    // Clear previous run's Allure results so this build's
+                    // report isn't mixed with a stale prior run.
+                    bat 'if exist reports\\allure-results rmdir /S /Q reports\\allure-results'
+                    // Non-zero exit (any failed scenario) is allowed to
+                    // mark this stage/build UNSTABLE-ish (FAILURE) without
+                    // aborting the pipeline, so the Allure stage below
+                    // still runs via post{always}. Full path again, same
+                    // reason as stage 2.
+                    bat '"%VENV_SCRIPTS%\\python.exe" -m behave'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Requires the "Allure Report" Jenkins plugin, with an "Allure"
+            // tool installation configured under Manage Jenkins > Tools
+            // (it bundles Node.js + the Allure 3 CLI automatically).
+            //
+            // allureVersion: '3' is required — this plugin supports both
+            // the old Java/allure-commandline 2.x line and the new
+            // Node-based Allure 3 CLI under the same `allure` step name.
+            // Without allureVersion set, it doesn't apply the `results`
+            // path the way Allure 3 expects, and silently falls back to
+            // its own default discovery glob (./**/allure-results)
+            // instead — which is what produced "No test results
+            // directories found matching pattern: ./**/allure-results".
+            // jdk / properties / reportBuildPolicy are Allure-2-only and
+            // undocumented for Allure 3, so they're dropped here.
+            allure(
+                allureVersion: '3',
+                includeProperties: false,
+                results: [[path: "${env.PROJECT_DIR}\\reports\\allure-results"]]
+            )
+        }
+    }
+}

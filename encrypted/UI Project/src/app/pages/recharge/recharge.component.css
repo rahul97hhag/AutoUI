@@ -1,0 +1,297 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  color: #171923;
+  font-family: Arial, sans-serif;
+}
+
+.site-header {
+  background: #fff;
+  border-bottom: 1px solid #dedee3;
+}
+
+.top-nav {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  padding: 0 10%;
+  border-bottom: 1px solid #e5e5e5;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.main-nav {
+  min-height: 71px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10%;
+}
+
+.brand {
+  color: #e40000;
+  font-size: 25px;
+  font-weight: 700;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  font-size: 12px;
+}
+
+.page-content {
+  display: grid;
+  grid-template-columns: 37.7% 62.3%;
+  min-height: calc(100vh - 108px);
+}
+
+.intro-panel {
+  padding: 42px 27%;
+  color: #fff;
+  background: #3d3f44;
+}
+
+.intro-panel h1 {
+  margin: 0 0 8px;
+  font-size: 42px;
+  line-height: 1.15;
+}
+
+.intro-panel p {
+  margin: 0;
+  color: #d7d7d9;
+  font-size: 19px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.recharge-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 36px 0;
+  background: #f7f7fa;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.breadcrumb a {
+  color: #0755cc;
+  text-decoration: none;
+}
+
+.form-content {
+  margin-top: 22px;
+}
+
+.form-content h2 {
+  margin: 0 0 6px;
+  font-size: 23px;
+}
+
+.description {
+  margin: 0 0 24px;
+  color: #565b68;
+  font-size: 12px;
+}
+
+.form-content label {
+  display: block;
+  margin-bottom: 5px;
+  color: #565b68;
+  font-size: 12px;
+}
+
+.form-content input {
+  box-sizing: border-box;
+  width: min(380px, 100%);
+  height: 44px;
+  padding: 0 13px;
+  border: 1px solid #536889;
+  border-radius: 8px;
+  background: #fff;
+  color: #222;
+  font: inherit;
+  font-size: 14px;
+}
+
+.form-content input::placeholder {
+  color: #626b7c;
+}
+
+.field-error {
+  margin: 8px 0 0;
+  color: #c62828;
+  font-size: 12px;
+}
+
+.next-button {
+  margin-top: 20px;
+  min-width: 160px;
+  height: 44px;
+  border: none;
+  border-radius: 8px;
+  background: #e40000;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.next-button:hover {
+  background: #c40000;
+}
+
+.plan-details-content {
+  margin-top: 22px;
+}
+
+.plan-details-content h2 {
+  margin: 0 0 6px;
+  font-size: 23px;
+}
+
+.plan-status {
+  margin: 0;
+  color: #656b75;
+  font-size: 13px;
+}
+
+.plan-price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 20px 0;
+  padding: 16px 20px;
+  border: 1px solid #e1e1e5;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  color: #565b68;
+}
+
+.plan-price-row strong {
+  font-size: 18px;
+  color: #171923;
+}
+
+.benefits-heading {
+  margin: 0 0 14px;
+  color: #555b68;
+  font-size: 11px;
+}
+
+.benefits-list {
+  list-style: none;
+  margin: 0 0 24px;
+  padding: 0;
+  border: 1px solid #e1e1e5;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.benefits-list li {
+  padding: 14px 20px;
+  border-bottom: 1px solid #eef0ff;
+  font-size: 12px;
+  color: #565b68;
+}
+
+.benefits-list li:last-child {
+  border-bottom: 0;
+}
+
+.benefits-list .benefit-heading {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  color: #171923;
+  font-size: 13px;
+}
+
+.benefits-list li p {
+  margin: 0;
+}
+
+.faq {
+  margin-top: auto;
+  padding: 0 0 0;
+}
+
+.faq h3 {
+  margin: 0 0 14px;
+  color: #555b68;
+  font-size: 11px;
+}
+
+.faq details {
+  padding: 20px;
+  border: 1px solid #e1e1e5;
+  border-radius: 10px 10px 0 0;
+  background: #fff;
+}
+
+.faq summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.faq details p {
+  color: #565b68;
+  font-size: 13px;
+}
+
+@media (max-width: 800px) {
+  .top-nav {
+    padding: 0 20px;
+    gap: 20px;
+  }
+
+  .main-nav {
+    padding: 16px 20px;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .nav-links {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 12px 18px;
+  }
+
+  .page-content {
+    grid-template-columns: 1fr;
+  }
+
+  .intro-panel {
+    padding: 32px 24px;
+  }
+
+  .intro-panel h1 {
+    font-size: 34px;
+  }
+
+  .intro-panel p {
+    white-space: normal;
+  }
+
+  .recharge-panel {
+    min-height: 500px;
+    padding: 20px 24px 0;
+  }
+
+  .faq {
+    margin-top: 120px;
+  }
+}

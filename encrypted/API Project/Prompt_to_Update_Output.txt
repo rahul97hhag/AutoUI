@@ -1,0 +1,736 @@
+
+
+Right — this is a direct, actionable implementation request (the pasted prompt ends with "Begin implementation now," addressed to me). I'll build this against the real project structure rather than from scratch: utils/network_recorder.py and utils/allure_helpers.py (matching the existing utils/logger.py, utils/test_data.py convention), wiring into the existing features/environment.py hooks, plus a demo feature.
+
+One design decision worth stating up front, per your own reminder: Playwright's page.on("request"/"response") callbacks only do cheap, synchronous bookkeeping (store headers/refs) — no response.text() inside them. Body reading happens later on the main thread, either in after_step (for the full trace) or inside assert_response() itself when a step calls it directly.
+
+
+
+Read C:\Bhavani\Applications\Automation_UI\config\config.yaml
+Write C:\Bhavani\Applications\Automation_UI\utils\network_recorder.py
+87 lines
+"""Step-scoped network capture for Playwright pages.
+
+NetworkRecorder.attach() registers request/response listeners once per page
+(see before_scenario in features/environment.py). Behave's before_step
+clears the recorded list and after_step reads it back, so each step's
+Allure attachment only reflects network traffic that happened during that
+specific step.
+
+Playwright's sync API dispatches these events off the main thread, so the
+listeners here only do cheap, synchronous bookkeeping -- storing headers and
+object references that are already available without blocking. Anything
+that can block (reading a response body) is deferred to resolve_body(),
+which callers invoke from the main thread once the step has moved on.
+"""
+import threading
+
+KEEP_RESOURCE_TYPES = {"xhr", "fetch", "document"}
+
+
+class NetworkRecorder:
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._entries = []
+
+    def attach(self, page):
+        page.on("request", self._on_request)
+        page.on("response", self._on_response)
+
+    def _on_request(self, request):
+        if request.resource_type not in KEEP_RESOURCE_TYPES:
+            return
+        entry = {
+            "method": request.method,
+            "url": request.url,
+            "resource_type": request.resource_type,
+            "request_headers": dict(request.headers),
+            "request_post_data": request.post_data,
+            "response": None,
+        }
+        with self._lock:
+            self._entries.append(entry)
+
+    def _on_response(self, response):
+        with self._lock:
+            for entry in reversed(self._entries):
+                if entry["response"] is None and entry["url"] == response.url:
+                    entry["response"] = {
+                        "status": response.status,
+                        "status_text": response.status_text,
+                        "response_headers": dict(response.headers),
+                        "_response": response,
+                    }
+                    return
+
+    def clear(self):
+        with self._lock:
+            self._entries = []
+
+    def snapshot(self):
+        """A shallow copy, safe to iterate on the main thread after the
+        step has finished (new events for the *next* step may still be
+        arriving concurrently, but they land in a fresh list after clear())."""
+        with self._lock:
+            return list(self._entries)
+
+
+def resolve_body(response):
+    """Safely read a response body. Must be called from the main thread,
+    after the request/response pair has had a chance to finish -- i.e. from
+    after_step or from a step definition, never from inside the
+    request/response event callbacks above.
+
+    Returns (body_text, error): error is None on success, otherwise a
+    description of why the body couldn't be read.
+    """
+    try:
+        failure = response.finished()
+        if failure:
+            return None, failure
+    except Exception as exc:  # noqa: BLE001 - surface any Playwright error as data, not a crash
+        return None, str(exc)
+
+    try:
+        return response.text(), None
+    except Exception as exc:  # noqa: BLE001
+        return None, str(exc)
+Write C:\Bhavani\Applications\Automation_UI\utils\allure_helpers.py
+167 lines
+"""Allure attachment helpers used by features/environment.py's step hooks
+and by step definitions that want to assert on captured API responses.
+"""
+import json
+import logging
+
+import allure
+from jsonpath_ng import parse as jsonpath_parse
+
+from utils.network_recorder import resolve_body
+
+SENSITIVE_HEADERS = {"authorization", "cookie", "set-cookie", "x-api-key", "x-auth-token"}
+REDACTED = "***"
+
+
+def redact_headers(headers):
+    return {key: (REDACTED if key.lower() in SENSITIVE_HEADERS else value) for key, value in headers.items()}
+
+
+class ListLogHandler(logging.Handler):
+    """Collects formatted log records in memory for the duration of one
+    step, so that step's output can be attached to Allure without re-reading
+    the shared log file."""
+
+    def __init__(self):
+        super().__init__()
+        self.records = []
+        self.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+
+    def emit(self, record):
+        self.records.append(self.format(record))
+
+    def as_text(self):
+        return "\n".join(self.records) if self.records else "(no log output for this step)"
+
+
+def attach_screenshot(page, name="screenshot"):
+    try:
+        png_bytes = page.screenshot(full_page=True)
+    except Exception as exc:  # noqa: BLE001 - never let attachment capture fail the step itself
+        allure.attach(str(exc), name=f"{name}-error", attachment_type=allure.attachment_type.TEXT)
+        return
+    allure.attach(png_bytes, name=name, attachment_type=allure.attachment_type.PNG)
+
+
+def attach_logs(handler, name="step_logs"):
+    allure.attach(handler.as_text(), name=name, attachment_type=allure.attachment_type.TEXT)
+
+
+def _try_parse_json(raw):
+    if not raw:
+        return raw
+    try:
+        return json.loads(raw)
+    except (TypeError, ValueError):
+        return raw
+
+
+def serialize_network_entries(entries):
+    """Resolve response bodies and build a JSON-safe list for the full
+    per-step network trace. Reads each body at most once per entry."""
+    serialized = []
+    for entry in entries:
+        response_meta = entry["response"]
+        data = {
+            "method": entry["method"],
+            "url": entry["url"],
+            "resource_type": entry["resource_type"],
+            "request_headers": redact_headers(entry["request_headers"]),
+            "request_post_data": _try_parse_json(entry["request_post_data"]),
+        }
+        if response_meta is None:
+            data["response"] = None
+        else:
+            body_text, body_error = resolve_body(response_meta["_response"])
+            data["response"] = {
+                "status": response_meta["status"],
+                "status_text": response_meta["status_text"],
+                "response_headers": redact_headers(response_meta["response_headers"]),
+                "body": _try_parse_json(body_text),
+                "body_error": body_error,
+            }
+        serialized.append(data)
+    return serialized
+
+
+def attach_network_trace(entries, name="network_trace"):
+    serialized = serialize_network_entries(entries)
+    allure.attach(json.dumps(serialized, indent=2, default=str), name=name, attachment_type=allure.attachment_type.JSON)
+    return serialized
+
+
+def _find_main_response(entries, which):
+    candidates = [e for e in entries if e["resource_type"] in ("xhr", "fetch") and e["response"] is not None]
+    if which == "last_xhr":
+        return candidates[-1] if candidates else None
+    return next((e for e in reversed(candidates) if which in e["url"]), None)
+
+
+def _attach_verification_table(rows):
+    columns = ["endpoint", "exp_status", "act_status", "jsonpath", "expected", "actual", "result"]
+    widths = [50, 10, 10, 22, 18, 18, 6]
+    lines = ["  ".join(c.ljust(w) for c, w in zip(columns, widths))]
+    lines.append("-" * sum(widths))
+    for row in rows:
+        lines.append("  ".join(str(v).ljust(w) for v, w in zip(row, widths)))
+    if not rows:
+        lines.append("(no checks were requested -- pass expected_status and/or jsonpath_checks)")
+    allure.attach("\n".join(lines), name="verification_result", attachment_type=allure.attachment_type.TEXT)
+
+
+def assert_response(context, expected_status=None, jsonpath_checks=None, which="last_xhr"):
+    """Verify the "main" API response captured so far during the current
+    step, and attach a PASS/FAIL table to Allure either way.
+
+    context: the Behave step context (must have .network_recorder and .page,
+             both set up in before_scenario/before_step).
+    which:   "last_xhr" (default) picks the most recently captured XHR/fetch
+             response; any other string is matched as a substring of the URL.
+    """
+    entries = context.network_recorder.snapshot()
+    entry = _find_main_response(entries, which)
+
+    if entry is None:
+        _attach_verification_table([])
+        attach_screenshot(context.page, name="assertion_failure")
+        raise AssertionError("assert_response: no matching XHR/fetch response was captured during this step")
+
+    endpoint = entry["url"]
+    response_meta = entry["response"]
+    body_text, body_error = resolve_body(response_meta["_response"])
+    body_json = None
+    if body_text is not None:
+        try:
+            body_json = json.loads(body_text)
+        except ValueError:
+            body_json = None
+
+    rows = []
+    failures = []
+
+    if expected_status is not None:
+        actual_status = response_meta["status"]
+        passed = actual_status == expected_status
+        rows.append((endpoint, expected_status, actual_status, "-", "-", "-", "PASS" if passed else "FAIL"))
+        if not passed:
+            failures.append(f"{endpoint}: expected status {expected_status}, got {actual_status}")
+
+    for path, expected_value in (jsonpath_checks or {}).items():
+        matches = jsonpath_parse(path).find(body_json) if body_json is not None else []
+        actual_value = matches[0].value if matches else None
+        passed = bool(matches) and actual_value == expected_value
+        rows.append((endpoint, "-", "-", path, repr(expected_value), repr(actual_value), "PASS" if passed else "FAIL"))
+        if not passed:
+            failures.append(f"{endpoint}: {path} expected {expected_value!r}, got {actual_value!r}")
+
+    if body_error:
+        failures.append(f"{endpoint}: response body could not be read ({body_error})")
+
+    _attach_verification_table(rows)
+
+    if failures:
+        attach_screenshot(context.page, name="assertion_failure")
+        raise AssertionError("; ".join(failures))
+
+    return {"url": endpoint, "status": response_meta["status"], "body": body_json}
+11:04 PM
+Now wire this into environment.py, add a logger accessor, and update config:
+
+
+
+Edit C:\Bhavani\Applications\Automation_UI\utils\logger.py
+Added 6 lines
+Edit C:\Bhavani\Applications\Automation_UI\features\environment.py
+Added 2 lines
+Edit C:\Bhavani\Applications\Automation_UI\features\environment.py
+Added 29 lines
+Edit C:\Bhavani\Applications\Automation_UI\config\config.yaml
+Added 5 lines
+11:05 PM
+Now the demo feature + steps (Phase 3 usage example) and the dependency update:
+
+
+
+Write C:\Bhavani\Applications\Automation_UI\features\steps\api_observability_steps.py
+38 lines
+"""Step definitions demonstrating assert_response() (utils/allure_helpers.py)
+against a response the running page genuinely receives.
+
+automationexercise.com's own UI is server-rendered -- its pages don't fire
+XHR/fetch calls on their own -- but the site also publishes a small REST API
+for practice at /api_list (e.g. GET /api/productsList ->
+{"responseCode": 200, "products": [...]}). Calling it via page.evaluate()'s
+fetch() makes it a real request/response the current page's
+NetworkRecorder observes the same way it would observe any API call the
+site's own JS made, so this exercises the full Phase 1-3 pipeline
+end-to-end rather than mocking it.
+"""
+import json
+
+from behave import when, then
+
+from utils.allure_helpers import assert_response
+
+
+@when('I call the GET API "{path}" from the page')
+def step_call_api(context, path):
+    url = path if path.startswith("http") else f"{context.config_data['base_url']}{path}"
+    context.page.evaluate(f"() => fetch('{url}')")
+
+
+@then("the API response should have status {expected_status:d}")
+def step_check_status_only(context, expected_status):
+    assert_response(context, expected_status=expected_status)
+
+
+@then('the API response field "{json_path}" should equal {expected_value}')
+def step_check_jsonpath(context, json_path, expected_value):
+    try:
+        expected = json.loads(expected_value)
+    except ValueError:
+        expected = expected_value
+    assert_response(context, jsonpath_checks={json_path: expected})
+Write C:\Bhavani\Applications\Automation_UI\features\api_observability.feature
+11 lines
+Feature: API observability pipeline
+  As a QA engineer
+  I want every step's network traffic, screenshots and logs captured automatically
+  So that a failure is diagnosable straight from the Allure report, without re-running
+
+  Scenario: Verify the public products API responds successfully
+    Given I navigate to the "home" page
+    When I call the GET API "/api/productsList" from the page
+    Then the API response should have status 200
+    And the API response field "$.responseCode" should equal 200
+Edit C:\Bhavani\Applications\Automation_UI\requirements.txt
+Added 1 line
+11:05 PM
+Let me verify this actually works — install the new dependency and sanity-check imports/syntax.
+
+
+
+Bash Install jsonpath-ng into the project venv
+IN
+./venv/Scripts/python.exe -m pip install jsonpath-ng>=1.6.0 -q 2>&1 | tail -10
+
+OUT
+(Bash completed with no output)
+Bash Compile-check new/modified files and verify key imports work
+IN
+./venv/Scripts/python.exe -m py_compile utils/network_recorder.py utils/allure_helpers.py utils/logger.py features/environment.py features/steps/api_observability_steps.py && echo "COMPILE OK" && ./venv/Scripts/python.exe -c "
+import allure
+from jsonpath_ng import parse
+from utils import network_recorder, allure_helpers
+from utils.logger import get_root_logger
+print('IMPORTS OK')
+print('allure.attach:', allure.attach)
+r = parse('\$.responseCode').find({'responseCode': 200})
+print('jsonpath test:', r[0].value if r else None)
+"
+
+OUT
+COMPILE OK
+IMPORTS OK
+allure.attach: <allure_commons._allure.Attach object at 0x00000214313817F0>
+jsonpath test: 200
+11:06 PM
+Now let's actually run the demo feature end-to-end against the live site to confirm the whole pipeline works, not just imports.
+
+
+
+Bash Run the new API observability demo feature live
+IN
+rm -rf reports/allure-results/* 2>/dev/null; ./venv/Scripts/python.exe -m behave features/api_observability.feature 2>&1 | tail -60
+
+OUT
+Traceback (most recent call last):
+  File "C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py", line 908, in on_finished
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+Task exception was never retrieved
+future: <Task finished name='Task-58' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+Traceback (most recent call last):
+  File "C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py", line 908, in on_finished
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+Task exception was never retrieved
+future: <Task finished name='Task-61' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+Traceback (most recent call last):
+  File "C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py", line 908, in on_finished
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+Task exception was never retrieved
+future: <Task finished name='Task-64' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+Traceback (most recent call last):
+  File "C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py", line 908, in on_finished
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+Task exception was never retrieved
+future: <Task finished name='Task-67' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+Traceback (most recent call last):
+  File "C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py", line 908, in on_finished
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+Task exception was never retrieved
+future: <Task finished name='Task-70' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+Traceback (most recent call last):
+  File "C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py", line 908, in on_finished
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+Task exception was never retrieved
+future: <Task finished name='Task-75' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+Traceback (most recent call last):
+  File "C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py", line 908, in on_finished
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+Task exception was never retrieved
+future: <Task finished name='Task-80' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+Traceback (most recent call last):
+  File "C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py", line 908, in on_finished
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+2026-10-22 23:06:52,382 [INFO] file_vault_ui.builtins: Finished scenario: Verify the public products API responds successfully
+    And the API response field "$.responseCode" should equal 200  # None
+
+    And the API response field "$.responseCode" should equal 200  # None
+
+2026-10-22 23:06:52,745 [INFO] file_vault_ui.builtins: Browser closed, Playwright stopped
+
+Failing scenarios:
+  features/api_observability.feature:6  Verify the public products API responds successfully
+
+0 features passed, 1 failed, 0 skipped
+0 scenarios passed, 1 failed, 0 skipped
+2 steps passed, 1 failed, 1 skipped, 0 undefined
+Took 0m19.483s
+Bash Re-run demo feature and capture the start of output for the real error
+IN
+./venv/Scripts/python.exe -m behave features/api_observability.feature 2>&1 | head -80
+
+OUT
+2026-10-22 23:06:58,250 [INFO] file_vault_ui.builtins: Launched chromium browser (headless=False)
+Feature: API observability pipeline # features/api_observability.feature:1
+  As a QA engineer
+  I want every step's network traffic, screenshots and logs captured automatically
+  So that a failure is diagnosable straight from the Allure report, without re-runningFeature: API observability pipeline # features/api_observability.feature:1
+  As a QA engineer
+  I want every step's network traffic, screenshots and logs captured automatically
+  So that a failure is diagnosable straight from the Allure report, without re-running2026-10-22 23:06:58,648 [INFO] file_vault_ui.builtins: Starting scenario: Verify the public products API responds successfully
+
+  Scenario: Verify the public products API responds successfully  # features/api_observability.feature:6
+    Given I navigate to the "home" page                           # features/steps/generic_steps.py:30
+
+  Scenario: Verify the public products API responds successfully  # features/api_observability.feature:6
+    Given I navigate to the "home" page                           # features/steps/generic_steps.py:30
+2026-10-22 23:06:58,648 [INFO] file_vault_ui.builtins: STEP START: Given I navigate to the "home" page
+2026-10-22 23:07:01,882 [INFO] file_vault_ui.builtins: STEP PASSED: Given I navigate to the "home" page
+    When I call the GET API "/api/productsList" from the page     # features/steps/api_observability_steps.py:20
+    When I call the GET API "/api/productsList" from the page     # features/steps/api_observability_steps.py:20
+2026-10-22 23:07:03,986 [INFO] file_vault_ui.builtins: STEP START: When I call the GET API "/api/productsList" from the page
+2026-10-22 23:07:04,370 [INFO] file_vault_ui.builtins: STEP PASSED: When I call the GET API "/api/productsList" from the page
+    Then the API response should have status 200                  # features/steps/api_observability_steps.py:26
+    Then the API response should have status 200                  # features/steps/api_observability_steps.py:26
+2026-10-22 23:07:05,890 [INFO] file_vault_ui.builtins: STEP START: Then the API response should have status 200
+2026-10-22 23:07:07,414 [ERROR] file_vault_ui.builtins: STEP FAILED: Then the API response should have status 200
+      Assertion Failed: assert_response: no matching XHR/fetch response was captured during this step
+
+      Assertion Failed: assert_response: no matching XHR/fetch response was captured during this step
+
+2026-10-22 23:07:08,977 [ERROR] file_vault_ui.builtins: Scenario failed: Verify the public products API responds successfully. Screenshot saved to reports/screenshots/Verify_the_public_products_API_responds_successfully.png
+Task exception was never retrieved
+future: <Task finished name='Task-10' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+Traceback (most recent call last):
+  File "C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py", line 908, in on_finished
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+Task exception was never retrieved
+future: <Task finished name='Task-13' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+Traceback (most recent call last):
+  File "C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py", line 908, in on_finished
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+Task exception was never retrieved
+future: <Task finished name='Task-16' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+Traceback (most recent call last):
+  File "C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py", line 908, in on_finished
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+Task exception was never retrieved
+future: <Task finished name='Task-19' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+Traceback (most recent call last):
+  File "C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py", line 908, in on_finished
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+Task exception was never retrieved
+future: <Task finished name='Task-22' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+Traceback (most recent call last):
+  File "C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py", line 908, in on_finished
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+Task exception was never retrieved
+future: <Task finished name='Task-25' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+Traceback (most recent call last):
+  File "C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py", line 908, in on_finished
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+Task exception was never retrieved
+future: <Task finished name='Task-28' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+Traceback (most recent call last):
+  File "C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py", line 908, in on_finished
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+Task exception was never retrieved
+future: <Task finished name='Task-31' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+Traceback (most recent call last):
+  File "C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py", line 908, in on_finished
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+Task exception was never retrieved
+future: <Task finished name='Task-34' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+Traceback (most recent call last):
+11:07 PM
+Let me debug this directly with a quick standalone script rather than looping through full behave runs each time.
+
+
+
+Bash Standalone diagnostic: capture what NetworkRecorder actually records for the fetch call
+IN
+./venv/Scripts/python.exe -c "
+from playwright.sync_api import sync_playwright
+from utils.network_recorder import NetworkRecorder
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=True)
+    page = browser.new_page(base_url='https://automationexercise.com')
+    rec = NetworkRecorder()
+    rec.attach(page)
+    page.goto('/')
+    rec.clear()
+    result = page.evaluate(\"() => fetch('https://automationexercise.com/api/productsList').then(r => r.status)\")
+    print('fetch status from evaluate:', result)
+    for e in rec.snapshot():
+        print(e['method'], e['resource_type'], e['url'], '-> response:', e['response'] is not None and e['response']['status'])
+    browser.close()
+"
+
+OUT
+fetch status from evaluate: 200
+POST xhr https://automationexercise.com/cdn-cgi/rum? -> response: 204
+GET fetch https://automationexercise.com/api/productsList -> response: 200
+POST xhr https://fundingchoicesmessages.google.com/el/AGSKWxWOMf0i43uyJOA-X2c9GeThpCoVDIAExQna4xxgZIi8Ues5gAqk4RRhoRj23NPz-bd3sYQxjE3FnGH6XP9GJ5W-S4A8d-r0ce99pIw5Vfck17yc5YpT13myHB5LWsdQvzVXnIpeAg== -> response: 204
+POST xhr https://fundingchoicesmessages.google.com/el/AGSKWxWOMf0i43uyJOA-X2c9GeThpCoVDIAExQna4xxgZIi8Ues5gAqk4RRhoRj23NPz-bd3sYQxjE3FnGH6XP9GJ5W-S4A8d-r0ce99pIw5Vfck17yc5YpT13myHB5LWsdQvzVXnIpeAg== -> response: 204
+GET document https://ep2.adtrafficquality.google/sodar/sodar2/255/runner.html -> response: 200
+GET document https://www.google.com/recaptcha/api2/aframe -> response: 200
+POST xhr https://fundingchoicesmessages.google.com/el/AGSKWxWOMf0i43uyJOA-X2c9GeThpCoVDIAExQna4xxgZIi8Ues5gAqk4RRhoRj23NPz-bd3sYQxjE3FnGH6XP9GJ5W-S4A8d-r0ce99pIw5Vfck17yc5YpT13myHB5LWsdQvzVXnIpeAg== -> response: 204
+POST xhr https://fundingchoicesmessages.google.com/el/AGSKWxWOMf0i43uyJOA-X2c9GeThpCoVDIAExQna4xxgZIi8Ues5gAqk4RRhoRj23NPz-bd3sYQxjE3FnGH6XP9GJ5W-S4A8d-r0ce99pIw5Vfck17yc5YpT13myHB5LWsdQvzVXnIpeAg== -> response: 204
+POST xhr https://fundingchoicesmessages.google.com/el/AGSKWxXaMmZYb6eBpMUslikoHh0qear43FuBMO9s3g8LOrbXZkwx-AY8-hMTI9iD2l2MTFH3POcXtaQhk2xS37AwmooMAvcUhWZYDlQW2rG2oy9n3C0e7pLd7KLkc8IYr4KCQScj7HLWow== -> response: 204
+POST xhr https://fundingchoicesmessages.google.com/el/AGSKWxWOMf0i43uyJOA-X2c9GeThpCoVDIAExQna4xxgZIi8Ues5gAqk4RRhoRj23NPz-bd3sYQxjE3FnGH6XP9GJ5W-S4A8d-r0ce99pIw5Vfck17yc5YpT13myHB5LWsdQvzVXnIpeAg== -> response: 204
+11:08 PM
+Found it — a real architectural bug, not a flaky test. before_step's network_recorder.clear() wipes the recorder before every single step, including the Then step. So the "When I call the API" step's captured response gets deleted the instant the next step (Then...) starts, before assert_response ever runs. The standalone script above proves the recorder itself works fine in isolation — this is purely a step-boundary design flaw in how I wired Phase 2's "clear before each step" into a workflow where the call and the assertion are in separate Gherkin steps.
+
+Real fix: stop destroying history on every step boundary. Instead, track a per-step mark (an index into an append-only list) — after_step's per-step JSON attachment uses since(mark) (still correctly scoped to just that step), while assert_response can see the whole scenario's history, so it can find a response from an earlier step.
+
+
+
+Edit C:\Bhavani\Applications\Automation_UI\utils\network_recorder.py
+Added 8 lines
+Edit C:\Bhavani\Applications\Automation_UI\features\environment.py
+Added 2 lines
+Edit C:\Bhavani\Applications\Automation_UI\features\environment.py
+Modified
+11:09 PM
+Now re-run the demo to confirm the fix actually works end-to-end:
+
+
+
+Bash Re-run demo feature after fixing the step-boundary clearing bug
+IN
+./venv/Scripts/python.exe -m py_compile utils/network_recorder.py features/environment.py && rm -rf reports/allure-results/* 2>/dev/null; ./venv/Scripts/python.exe -m behave features/api_observability.feature 2>&1 | grep -E "STEP|scenario|feature|passed|failed|Error|Assertion" 
+
+OUT
+Feature: API observability pipeline # features/api_observability.feature:1
+  So that a failure is diagnosable straight from the Allure report, without re-runningFeature: API observability pipeline # features/api_observability.feature:1
+  So that a failure is diagnosable straight from the Allure report, without re-running2026-10-22 23:09:05,831 [INFO] file_vault_ui.builtins: Starting scenario: Verify the public products API responds successfully
+  Scenario: Verify the public products API responds successfully  # features/api_observability.feature:6
+    Given I navigate to the "home" page                           # features/steps/generic_steps.py:30
+  Scenario: Verify the public products API responds successfully  # features/api_observability.feature:6
+    Given I navigate to the "home" page                           # features/steps/generic_steps.py:30
+2026-10-22 23:09:05,832 [INFO] file_vault_ui.builtins: STEP START: Given I navigate to the "home" page
+2026-10-22 23:09:09,075 [INFO] file_vault_ui.builtins: STEP PASSED: Given I navigate to the "home" page
+    When I call the GET API "/api/productsList" from the page     # features/steps/api_observability_steps.py:20
+    When I call the GET API "/api/productsList" from the page     # features/steps/api_observability_steps.py:20
+2026-10-22 23:09:10,867 [INFO] file_vault_ui.builtins: STEP START: When I call the GET API "/api/productsList" from the page
+2026-10-22 23:09:11,324 [INFO] file_vault_ui.builtins: STEP PASSED: When I call the GET API "/api/productsList" from the page
+    Then the API response should have status 200                  # features/steps/api_observability_steps.py:26
+    Then the API response should have status 200                  # features/steps/api_observability_steps.py:26
+2026-10-22 23:09:12,540 [INFO] file_vault_ui.builtins: STEP START: Then the API response should have status 200
+2026-10-22 23:09:12,545 [INFO] file_vault_ui.builtins: STEP PASSED: Then the API response should have status 200
+    And the API response field "$.responseCode" should equal 200  # features/steps/api_observability_steps.py:31
+    And the API response field "$.responseCode" should equal 200  # features/steps/api_observability_steps.py:31
+2026-10-22 23:09:13,711 [INFO] file_vault_ui.builtins: STEP START: And the API response field "$.responseCode" should equal 200
+2026-10-22 23:09:13,727 [INFO] file_vault_ui.builtins: STEP PASSED: And the API response field "$.responseCode" should equal 200
+future: <Task finished name='Task-10' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-13' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-16' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-19' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-22' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-25' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-28' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-31' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-34' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-37' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-40' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-43' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-46' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-49' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-52' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-55' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-58' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-61' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-66' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-69' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+future: <Task finished name='Task-73' coro=<Response.finished.<locals>.on_finished() done, defined at C:\Bhavani\Applications\Automation_UI\venv\Lib\site-packages\playwright\_impl\_network.py:906> exception=Error('Target closed')>
+    raise Error("Target closed")
+playwright._impl._errors.Error: Target closed
+2026-10-22 23:09:14,989 [INFO] file_vault_ui.builtins: Finished scenario: Verify the public products API responds successfully
+1 feature passed, 0 failed, 0 skipped
+1 scenario passed, 0 failed, 0 skipped
+4 steps passed, 0 failed, 0 skipped, 0 undefined
+11:09 PM
+Let's confirm the Allure attachments actually got written correctly (screenshot, logs, network JSON, verification table per step):
+
+
+
+Bash Inspect generated Allure results to confirm attachments were written
+IN
+ls reports/allure-results | sort && echo "---sample result json attachments---" && python3 -c "
+import json, glob
+for f in glob.glob('reports/allure-results/*-result.json'):
+    d = json.load(open(f, encoding='utf-8'))
+    print(d['name'], '->', [a['name']+':'+a['type'] for a in d.get('steps', [{}])[0].get('attachments', [])] if d.get('steps') else d.get('attachments'))
+" 2>&1 | head -30
+
+OUT
+157e67e9-36f7-46ec-82eb-6580745d1c93-attachment.png
+1993bc43-825a-48e9-93f3-e8f61aaa950e-attachment.txt
+392940e1-dedf-4965-a474-52b77fc1670e-attachment.png
+568c5060-c76f-42e6-a734-288b7488c28b-attachment.json
+5c5028ba-142a-4d2f-be46-67e053f44380-attachment.json
+639258d9-7791-40bb-8389-7e5aeb6c1f62-attachment.png
+67535e06-46df-41c7-bc8c-cd489d495f7e-attachment.png
+6bfb59e0-307a-4fbb-8182-dc809aa3da83-attachment.txt
+6f436fb1-d795-48d1-87a1-7dbf3978ec22-attachment.json
+6ff6e808-31bf-43dd-acdf-008c311847a9-attachment.json
+bd884f01-a3ea-4b7f-93ec-d569911d7bb0-attachment.txt
+c2bcdbc4-472a-45c7-9594-db5e24e2fd04-attachment.txt
+d1bef2f1-48ff-4c78-852f-89b6e5f33b0c-attachment.txt
+d9373c36-00bb-4ac6-b552-ce42166c706b-result.json
+ed1bdda4-4ac0-40b4-a766-ff22305c4849-attachment.txt
+---sample result json attachments---
+Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+Bash Inspect result JSON structure using the project's own venv python
+IN
+./venv/Scripts/python.exe -c "
+import json, glob
+f = glob.glob('reports/allure-results/*-result.json')[0]
+d = json.load(open(f, encoding='utf-8'))
+print('test case:', d['name'])
+for s in d.get('steps', []):
+    print(' step:', s['name'], '-> attachments:', [(a['name'], a['type']) for a in s.get('attachments', [])])
+"
+
+OUT
+test case: Verify the public products API responds successfully
+ step: Given I navigate to the "home" page -> attachments: [('screenshot', 'image/png'), ('step_logs', 'text/plain'), ('network_trace', 'application/json')]
+ step: When I call the GET API "/api/productsList" from the page -> attachments: [('screenshot', 'image/png'), ('step_logs', 'text/plain'), ('network_trace', 'application/json')]
+ step: Then the API response should have status 200 -> attachments: [('verification_result', 'text/plain'), ('screenshot', 'image/png'), ('step_logs', 'text/plain'), ('network_trace', 'application/json')]
+ step: And the API response field "$.responseCode" should equal 200 -> attachments: [('verification_result', 'text/plain'), ('screenshot', 'image/png'), ('step_logs', 'text/plain'), ('network_trace', 'application/json')]
+11:09 PM
+Confirmed end-to-end: each step gets its own screenshot (PNG), step_logs (text), and network_trace (JSON) attachment, and the Then/And steps additionally get the verification_result table from assert_response. All correctly nested under the right step in the Allure structure, not dumped at scenario level.
+
+Summary
+Files added:
+
+utils/network_recorder.py — NetworkRecorder: lightweight (non-blocking) request/response listeners + resolve_body() for safe, deferred body reading on the main thread
+utils/allure_helpers.py — ListLogHandler, attach_screenshot, attach_logs, attach_network_trace, assert_response with header redaction (SENSITIVE_HEADERS)
+features/api_observability.feature + features/steps/api_observability_steps.py — working demo against automationexercise.com's real public API
+Files changed:
+
+features/environment.py — before_step/after_step now capture screenshot + logs + network trace per step
+utils/logger.py — added get_root_logger() accessor
+config/config.yaml — capture_step_screenshots / capture_network toggles
+requirements.txt — added jsonpath-ng
+One real bug found and fixed during verification (not just written and assumed-correct): my first pass cleared the network recorder in before_step, which wiped the When step's captured API response before the following Then step's assert_response() could read it — a direct conflict between Phase 2's "scope to this step" requirement and Phase 3's "assert from a later step." Fixed by switching to an append-only history with mark()/since(), so per-step Allure attachments stay correctly scoped while assert_response can still see earlier steps' responses. Confirmed via a standalone diagnostic script, then a full behave run (4/4 steps passing) with real Allure result JSON inspected to confirm attachments land under the correct step.
+
+Not addressed, worth knowing: harmless but noisy Task exception was never retrieved: ... Target closed warnings appear in stderr near scenario end — third-party ad/consent-script network calls (Google ad/consent beacons embedded on the site) still in-flight when the browser closes. Doesn't affect pass/fail. If you want it cleaned up, I can filter network capture to same-origin requests only.
+

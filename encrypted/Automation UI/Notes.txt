@@ -1,0 +1,4 @@
+"C:\Bhavani\Applications\allure\bin\allure" generate reports\allure-results -o reports\allure-report --clean
+"C:\Bhavani\Applications\allure\bin\allure" open reports\allure-report
+
+

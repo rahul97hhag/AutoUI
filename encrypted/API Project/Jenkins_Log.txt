@@ -1,0 +1,111 @@
+pipeline {
+    agent any
+
+    environment {
+         PROJECT_DIR = 'C:\\Bhavani\\AUTOMATION\\UI'
+         VENV_SCRIPTS = "${PROJECT_DIR}\\.venv\\Scripts"
+         HEADLESS = 'false'
+         PYTHONPATH = "${PROJECT_DIR}"
+         // Manually downloaded Allure CLI — bypasses the Jenkins "Allure"
+         // tool installation entirely (that kept resolving to a broken
+         // from-PATH entry regardless of commandline: 'Allure' pinning).
+         // Extracted distribution, so the executable is under bin\.
+         ALLURE_HOME = 'C:\\Bhavani\\AUTOMATION\\allure'
+         PATH = "${VENV_SCRIPTS};${ALLURE_HOME}\\bin;${env.PATH}"
+         PLAYWRIGHT_BROWSERS_PATH="C:\\Users\\chbhavani\\AppData\\Local\\ms-playwright"
+    }
+
+    stages {
+
+        stage('1. Navigate to project folder') {
+             steps {
+                 dir(env.PROJECT_DIR) {
+                     bat 'cd'
+                }
+            }
+        }
+
+        stage('2. Set Python path') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    bat '''
+                        echo PYTHONPATH=%PYTHONPATH%
+                        "%VENV_SCRIPTS%\\python.exe" --version
+                        where python
+                        '''
+                }
+            }
+        }
+
+        stage('3. Set env PATH') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    bat '''
+                        echo PATH=%PATH%
+                        where behave
+                        '''
+                }
+            }
+        }
+
+        stage('4. Run Behave tests') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    // behave.ini already configures the Allure formatter +
+                    // its output folder (reports/allure-results). Passing
+                    // -f/-o here a second time doesn't override that, it
+                    // COMBINES with it, and the formatter/outfile counts
+                    // stop matching -> "CONFIG-ERROR: Too many outfiles".
+                    // Also the folder names disagreed (allure-results vs
+                    // allure_results/ vs reports/allure-results) even
+                    // before that. Clear + run against the ini's own path.
+                    bat 'if exist reports\\allure-results rmdir /S /Q reports\\allure-results'
+                    bat 'behave features/contact_us.feature'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            dir(env.PROJECT_DIR) {
+                // Skip the Allure Jenkins plugin's tool-resolution entirely
+                // (it kept finding a broken installation no matter which
+                // name was pinned) and call the manually downloaded CLI
+                // directly. This is the same "allure generate" command the
+                // plugin itself would have run, just invoked ourselves.
+                //
+                // Belt-and-suspenders: rmdir the old report folder AND pass
+                // --clean. --clean alone should be enough (it's literally
+                // what the error asked for), but a stale/locked folder from
+                // a previous build can still trip it up, so clearing it
+                // explicitly first removes that as a failure mode too.
+                bat 'if exist reports\\allure-report rmdir /S /Q reports\\allure-report'
+                bat '"%ALLURE_HOME%\\bin\\allure" generate "reports\\allure-results" -o "reports\\allure-report" --clean'
+
+                // Requires the "HTML Publisher" plugin (Manage Jenkins ->
+                // Plugins -> search "HTML Publisher" -> install, no restart
+                // needed for most Jenkins versions). This serves the report
+                // over Jenkins' own web server and adds an "Allure Report"
+                // link on the build page / job sidebar. Just archiving the
+                // files (old approach) isn't enough to actually view an
+                // Allure report: it's a multi-file app that fetches its
+                // JSON data via JS, and browsers block that over a plain
+                // file:// path (CORS) -- the HTML opens but stays blank if
+                // you just download and double-click it. publishHTML avoids
+                // that because it's served over http://, not file://.
+                publishHTML(target: [
+                    reportDir: 'reports/allure-report',
+                    reportFiles: 'index.html',
+                    reportName: 'Allure Report',
+                    keepAll: true,
+                    alwaysLinkToLastBuild: true,
+                    allowMissing: false
+                ])
+
+                // Still keep a raw downloadable copy as a fallback.
+                archiveArtifacts artifacts: 'reports/allure-report/**', allowEmptyArchive: true, fingerprint: false
+            }
+        }
+    }
+}

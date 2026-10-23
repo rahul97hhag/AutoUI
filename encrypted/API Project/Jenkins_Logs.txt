@@ -1,0 +1,164 @@
+Started by user admin
+[Pipeline] Start of Pipeline
+[Pipeline] node
+Running on Jenkins in C:\ProgramData\Jenkins\.jenkins\workspace\UI_Automation
+[Pipeline] {
+[Pipeline] withEnv
+[Pipeline] {
+[Pipeline] stage
+[Pipeline] { (1. Navigate to project folder)
+[Pipeline] dir
+Running in C:\Bhavani\AUTOMATION\UI
+[Pipeline] {
+[Pipeline] bat
+
+C:\Bhavani\AUTOMATION\UI>cd
+C:\Bhavani\AUTOMATION\UI
+[Pipeline] }
+[Pipeline] // dir
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (2. Set Python path)
+[Pipeline] dir
+Running in C:\Bhavani\AUTOMATION\UI
+[Pipeline] {
+[Pipeline] bat
+
+C:\Bhavani\AUTOMATION\UI>echo PYTHONPATH=C:\Bhavani\AUTOMATION\UI 
+PYTHONPATH=C:\Bhavani\AUTOMATION\UI
+
+C:\Bhavani\AUTOMATION\UI>"C:\Bhavani\AUTOMATION\UI\venv\Scripts\python.exe" --version 
+The system cannot find the path specified.
+
+C:\Bhavani\AUTOMATION\UI>where python 
+C:\Program Files\Python314\python.exe
+[Pipeline] }
+[Pipeline] // dir
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (3. Set env PATH)
+[Pipeline] dir
+Running in C:\Bhavani\AUTOMATION\UI
+[Pipeline] {
+[Pipeline] bat
+
+C:\Bhavani\AUTOMATION\UI>echo PATH=C:\Bhavani\AUTOMATION\UI\venv\Scripts;C:\Program Files\Python314\Scripts\;C:\Program Files\Python314\;C:\Program Files\Amazon Corretto\jdk25.0.4_10\bin;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\nodejs\;C:\WINDOWS\system32\config\systemprofile\AppData\Local\Microsoft\WindowsApps;C:\WINDOWS\system32\config\systemprofile\AppData\Roaming\npm 
+PATH=C:\Bhavani\AUTOMATION\UI\venv\Scripts;C:\Program Files\Python314\Scripts\;C:\Program Files\Python314\;C:\Program Files\Amazon Corretto\jdk25.0.4_10\bin;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\nodejs\;C:\WINDOWS\system32\config\systemprofile\AppData\Local\Microsoft\WindowsApps;C:\WINDOWS\system32\config\systemprofile\AppData\Roaming\npm
+
+C:\Bhavani\AUTOMATION\UI>"C:\Bhavani\AUTOMATION\UI\venv\Scripts\behave"  --version 
+The system cannot find the path specified.
+[Pipeline] }
+[Pipeline] // dir
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (4. Run Behave tests)
+Stage "4. Run Behave tests" skipped due to earlier failure(s)
+[Pipeline] getContext
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Declarative: Post Actions)
+[Pipeline] dir
+Running in C:\Bhavani\AUTOMATION\UI
+[Pipeline] {
+[Pipeline] allure
+[Allure] No installation selected, using the only available: Allure
+[Allure] Using cached Allure 3.16.0 with Node.js 24.14.1 at C:\ProgramData\Jenkins\.jenkins\tools\org.allurereport.jenkins.tools.AllureCommandlineInstallation\Allure\releases\allure-3.16.0-node-24.14.1-runtime-1
+Using Allure CLI 3.16.0 from installation 'Allure'
+Cleaning existing Allure report directory: C:\Bhavani\AUTOMATION\UI\allure-report
+Using Allure CLI: C:\ProgramData\Jenkins\.jenkins\tools\org.allurereport.jenkins.tools.AllureCommandlineInstallation\Allure\releases\allure-3.16.0-node-24.14.1-runtime-1\node-v24.14.1-win-x64\node.exe C:\ProgramData\Jenkins\.jenkins\tools\org.allurereport.jenkins.tools.AllureCommandlineInstallation\Allure\releases\allure-3.16.0-node-24.14.1-runtime-1\allure\node_modules\allure\cli.js
+[UI] $ C:\ProgramData\Jenkins\.jenkins\tools\org.allurereport.jenkins.tools.AllureCommandlineInstallation\Allure\releases\allure-3.16.0-node-24.14.1-runtime-1\node-v24.14.1-win-x64\node.exe C:\ProgramData\Jenkins\.jenkins\tools\org.allurereport.jenkins.tools.AllureCommandlineInstallation\Allure\releases\allure-3.16.0-node-24.14.1-runtime-1\allure\node_modules\allure\cli.js generate C:\Bhavani\AUTOMATION\UI\allure-results -o C:\Bhavani\AUTOMATION\UI\allure-report
+Allure report was successfully generated.
+Archiving Allure report via ArtifactManager…
+Allure artifact archived via ArtifactManager.
+[Pipeline] }
+[Pipeline] // dir
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] }
+[Pipeline] // withEnv
+[Pipeline] }
+[Pipeline] // node
+[Pipeline] End of Pipeline
+ERROR: script returned exit code 1
+Finished: FAILURE
+
+
+
+
+
+
+
+
+pipeline {
+    agent any
+
+    environment {
+         PROJECT_DIR = 'C:\\Bhavani\\AUTOMATION\\UI'
+         VENV_SCRIPTS = "${PROJECT_DIR}\\venv\\Scripts"
+         HEADLESS = 'false'
+         PYTHONPATH = "${PROJECT_DIR}"
+         PATH = "${VENV_SCRIPTS};${env.PATH}"
+    }
+
+    stages {
+
+        stage('1. Navigate to project folder') {
+             steps {
+                 dir(env.PROJECT_DIR) {
+                     bat 'cd'
+                }
+            }
+        }
+
+        stage('2. Set Python path') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    bat '''
+                        echo PYTHONPATH=%PYTHONPATH%
+                        "%VENV_SCRIPTS%\\python.exe" --version
+                        where python
+                        '''
+                    }
+                }
+            }
+
+        stage('3. Set env PATH') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                bat '''
+                    echo PATH=%PATH%
+                    "%VENV_SCRIPTS%\\behave"  --version
+                    '''
+                }
+            }
+        }
+
+    stage('4. Run Behave tests') {
+        steps {
+            dir(env.PROJECT_DIR) {
+                bat 'if exist allure-results rmdir /S /Q allure-results'
+                bat '%VENV_SCRIPTS%\\behave features/contact_us.feature'
+            }
+        }
+    }
+}
+
+    post {
+        always {
+            dir(env.PROJECT_DIR) {
+                allure([
+                    includeProperties: false,
+                    jdk: '',
+                    properties: [],
+                    reportBuildPolicy: 'ALWAYS',
+                    results: [[path: 'allure-results']]
+                ])
+            }
+        }
+    }
+}
+
