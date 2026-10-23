@@ -1,8 +1,0 @@
-playwright>=1.64.0
-behave==1.2.6
-pyyaml==6.0.2
-allure-behave==2.13.5
-jsonpath-ng>=1.6.0
-lxml>=5.0.0
-scikit-learn>=1.5.0
-cryptography>=42.0.0
